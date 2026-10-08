@@ -1,0 +1,6 @@
+# Keeps MySQL's footprint small for local development.
+
+[mysqld]
+innodb_buffer_pool_size = 128M
+performance_schema = OFF
+max_connections = 50
