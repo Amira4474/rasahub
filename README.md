@@ -4,9 +4,10 @@ An F&B point-of-sale and restaurant management platform, built with Laravel,
 Filament and MySQL.
 
 This repository currently contains the **Phase 1 foundation** only: the
-application skeleton, the Docker development environment, authentication, roles
-and permissions, and the core business, branch, terminal and user structure. No
-POS functionality exists yet.
+application skeleton, the Docker development environment, the public website,
+the three sign-in doors (platform, tenant admin, staff POS), roles and
+permissions, tenant isolation, Super Impose and the core business, branch,
+terminal and user structure. No selling functionality exists yet.
 
 ## Stack
 
@@ -30,27 +31,28 @@ cd docker-local
 docker compose up -d
 ```
 
-The admin panel is at http://localhost:8080/admin.
+| | URL |
+|---|---|
+| Public website | http://localhost:8080 |
+| Platform panel | http://localhost:8080/platform |
+| Tenant admin panel | http://localhost:8080/admin |
+| Staff POS | http://localhost:8080/pos |
 
 ## Domain foundation
 
-- **Business**: the top-level owner of everything. Has many branches and users.
+- **Platform**: RasaHub itself, above every business. Platform users belong
+  to no business.
+- **Business**: a tenant. Has many branches and users, a subscription, and
+  a database of its own for its branches, terminals and later its menus and
+  orders. Users, subscriptions and the businesses themselves are in the
+  central database.
 - **Branch**: a physical outlet of a business. Has many terminals.
 - **Terminal**: a physical POS device in a branch, and a first-class identity.
-- **User**: belongs to one business, or to none for a platform-level user.
+- **User**: belongs to exactly one business, or to none for a platform user.
 
-Two separate things decide what a user can do:
-
-- **Roles and permissions** say *what* a user may do. There is one global set of
-  roles, defined in `app/Enums/Role.php`, with permissions in
-  `app/Enums/Permission.php`. After changing either, run
-  `php artisan db:seed` to sync the database.
-- **Branch assignment** says *where* they may do it. It lives in the
-  `branch_user` table. A user reaches only their assigned branches unless they
-  hold the `branches.access-all` permission, which Owners do.
-
-Super Admins pass every check through a single `Gate::before` rule in
-`AppServiceProvider`.
+Who can reach what, the databases, tenant isolation, Super Impose,
+subscriptions, invitations and migrations are described in
+[docs/ACCESS.md](docs/ACCESS.md). Read it before adding a model or a screen.
 
 ## Conventions for later phases
 
@@ -63,5 +65,7 @@ Super Admins pass every check through a single `Gate::before` rule in
 
 ## Documents
 
+- [docs/ACCESS.md](docs/ACCESS.md): how access, tenancy, Super Impose, subscriptions, invitations and migrations work.
 - [docs/SYSTEMCONCEPT.md](docs/SYSTEMCONCEPT.md): the original system concept.
+- [docs/DifferentAccess.md](docs/DifferentAccess.md): the access requirements.
 - [SYSTEMARCHITECTURE.md](SYSTEMARCHITECTURE.md): the full-Docker architecture brief.

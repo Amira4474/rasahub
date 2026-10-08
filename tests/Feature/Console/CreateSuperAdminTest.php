@@ -22,7 +22,7 @@ class CreateSuperAdminTest extends TestCase
 
         $user = User::where('email', 'root@example.com')->sole();
 
-        $this->assertTrue($user->hasRole(Role::SuperAdmin));
+        $this->assertTrue($user->hasRole(Role::PlatformSuperAdmin));
         $this->assertTrue($user->isPlatformUser());
         $this->assertTrue($user->is_active);
         $this->assertTrue(Hash::check('correct-horse-battery', $user->password));

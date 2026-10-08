@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Tenancy\UsesTenantDatabase;
 use Database\Factories\TerminalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -15,12 +16,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * A physical point-of-sale device. Terminals are first-class identities so
  * that records they create can later be attributed, de-duplicated and synced.
+ *
+ * A terminal is a POS terminal only. Kitchen display screens and QR ordering
+ * are different kinds of device with their own tables, so that each can be
+ * counted and limited separately.
  */
 #[Fillable(['branch_id', 'name', 'code', 'is_active'])]
 class Terminal extends Model
 {
     /** @use HasFactory<TerminalFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids, SoftDeletes, UsesTenantDatabase;
 
     /**
      * Mirror the column default so a new model is active before it is reloaded.
@@ -50,17 +55,13 @@ class Terminal extends Model
     }
 
     /**
-     * Limit the query to terminals in branches the given user may reach.
+     * Limit the query to terminals in branches the given user may work in.
      *
      * @param  Builder<self>  $query
      */
     #[Scope]
     protected function visibleTo(Builder $query, User $user): void
     {
-        if ($user->isPlatformUser()) {
-            return;
-        }
-
         $query->whereHas('branch', fn (Builder $branches) => $branches->visibleTo($user));
     }
 

@@ -21,7 +21,9 @@ docker compose down       # stop; keeps the database and dependencies
 | What | URL |
 |---|---|
 | Application | http://localhost:8080 |
-| Admin panel | http://localhost:8080/admin |
+| Platform panel | http://localhost:8080/platform |
+| Tenant admin panel | http://localhost:8080/admin |
+| Staff POS | http://localhost:8080/pos |
 | Vite dev server (hot reload) | http://localhost:5173 |
 | MySQL from a database client | `127.0.0.1:3307` |
 
@@ -44,7 +46,7 @@ already listening on 3306.
 | Data | Stored in | Survives `down` | Removed by `down -v` |
 |---|---|---|---|
 | Laravel source | this repository (bind mount) | yes | no |
-| MySQL data | volume `rasahub_mysql_data` | yes | **yes** |
+| MySQL data (central and every tenant database) | volume `rasahub_mysql_data` | yes | **yes** |
 | `vendor/` | volume `rasahub_vendor` | yes | yes |
 | `node_modules/` | volume `rasahub_node_modules` | yes | yes |
 
@@ -90,7 +92,8 @@ which takes a minute or two before http://localhost:5173 responds.
 
 ```
 docker compose exec app php artisan test          # run the test suite
-docker compose exec app php artisan migrate       # run new migrations
+docker compose exec app php artisan migrate       # run new central migrations
+docker compose exec app php artisan tenants:migrate   # run new migrations in every tenant database
 docker compose exec app php artisan db:seed       # re-sync roles and permissions
 docker compose exec app composer require <pkg>    # add a PHP package
 docker compose exec app ./vendor/bin/pint         # format PHP code
@@ -102,6 +105,26 @@ docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYS
 
 Tests use a separate database, `rasahub_testing`, created by
 `mysql/init/01-testing-db.sh` the first time the MySQL volume is initialised.
+
+Every tenant has a database of its own, named `rasahub_tenant_<id>`
+(`rasahub_testing_tenant_<id>` during tests), which the application creates
+when the tenant is created. `mysql/init/02-tenant-databases.sh` gives the
+application's database user the right to do that. On a MySQL volume that
+already existed before that script was added, run it once by hand:
+
+```
+docker compose exec mysql sh /docker-entrypoint-initdb.d/02-tenant-databases.sh
+```
+
+`php artisan migrate:fresh` rebuilds the central database only. It leaves the
+tenant databases behind, and creating a tenant then fails because its
+database already exists. To start completely clean, list them and drop each
+one first:
+
+```
+docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES LIKE \"%tenant%\""'
+docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE rasahub_tenant_1"'
+```
 
 ## Files
 
@@ -116,6 +139,7 @@ docker-local/
 ├── nginx/default.conf            web server configuration
 ├── mysql/conf.d/rasahub.cnf      MySQL memory settings
 ├── mysql/init/01-testing-db.sh   creates the testing database
+├── mysql/init/02-tenant-databases.sh  lets the app create tenant databases
 └── node/Dockerfile               vite image
 ```
 

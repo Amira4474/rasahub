@@ -15,7 +15,7 @@ use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
 
 #[Signature('app:create-super-admin')]
-#[Description('Create a platform user with the Super Admin role')]
+#[Description('Create a platform user with the Platform Super Admin role')]
 class CreateSuperAdmin extends Command
 {
     /**
@@ -40,12 +40,12 @@ class CreateSuperAdmin extends Command
             ]);
 
             $user->forceFill(['email_verified_at' => now()])->save();
-            $user->assignRole(Role::SuperAdmin);
+            $user->assignRole(Role::PlatformSuperAdmin);
 
             return $user;
         });
 
-        $this->components->info("Super Admin [{$user->email}] created. Sign in at ".url('/admin'));
+        $this->components->info("Platform Super Admin [{$user->email}] created. Sign in at ".url('/platform'));
 
         return self::SUCCESS;
     }

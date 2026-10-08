@@ -13,7 +13,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -25,6 +24,10 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static ?string $modelLabel = 'staff member';
+
+    protected static ?string $pluralModelLabel = 'staff';
+
     public static function form(Schema $schema): Schema
     {
         return UserForm::configure($schema);
@@ -33,15 +36,6 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return UsersTable::configure($table);
-    }
-
-    /**
-     * Every list, edit page and record lookup is limited to what the
-     * signed-in user may see.
-     */
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->visibleTo(auth()->user());
     }
 
     public static function getPages(): array

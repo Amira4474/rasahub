@@ -25,6 +25,9 @@ class TerminalResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    // KDS screens and QR ordering are separate kinds of device, not terminals.
+    protected static ?string $modelLabel = 'POS terminal';
+
     public static function form(Schema $schema): Schema
     {
         return TerminalForm::configure($schema);

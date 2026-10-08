@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\Plan;
 use App\Models\Business;
+use App\Models\Subscription;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -23,9 +25,43 @@ class BusinessFactory extends Factory
         return [
             'name' => $name,
             'slug' => Str::slug($name),
+            'acronym' => strtoupper(fake()->unique()->lexify('??????')),
             'currency' => 'MYR',
             'timezone' => 'UTC',
             'is_active' => true,
         ];
+    }
+
+    /**
+     * A business comes with an active subscription unless a state below
+     * says otherwise.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Business $business): void {
+            $business->subscription()->create(['plan' => Plan::Starter, ...Subscription::firstPeriod()]);
+        });
+    }
+
+    public function expired(): static
+    {
+        return $this->afterCreating(function (Business $business): void {
+            $business->subscription->update(['starts_at' => today()->subMonths(2), 'ends_at' => today()->subDay()]);
+        });
+    }
+
+    public function suspended(): static
+    {
+        return $this->afterCreating(function (Business $business): void {
+            $business->subscription->suspend('Suspended for testing.');
+        });
+    }
+
+    public function withoutSubscription(): static
+    {
+        return $this->afterCreating(function (Business $business): void {
+            $business->subscription->delete();
+            $business->unsetRelation('subscription');
+        });
     }
 }

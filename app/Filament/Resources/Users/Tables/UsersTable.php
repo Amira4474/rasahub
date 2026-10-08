@@ -13,10 +13,6 @@ class UsersTable
     {
         return $table
             ->columns([
-                TextColumn::make('business.name')
-                    ->placeholder('Platform')
-                    ->sortable()
-                    ->visible(fn (): bool => auth()->user()->isPlatformUser()),
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),

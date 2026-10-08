@@ -27,6 +27,10 @@ class RolesAndPermissionsSeeder extends Seeder
             RoleModel::findOrCreate($role->value)->syncPermissions($role->permissions());
         }
 
+        // Remove whatever is no longer defined in the enums.
+        PermissionModel::whereNotIn('name', array_column(Permission::cases(), 'value'))->delete();
+        RoleModel::whereNotIn('name', array_column(Role::cases(), 'value'))->delete();
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

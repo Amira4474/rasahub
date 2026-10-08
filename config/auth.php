@@ -63,7 +63,8 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'eloquent',
+            // Eloquent, without the business limit: see SignInUserProvider.
+            'driver' => 'sign-in',
             'model' => env('AUTH_MODEL', User::class),
         ],
 
