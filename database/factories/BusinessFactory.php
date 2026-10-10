@@ -43,6 +43,13 @@ class BusinessFactory extends Factory
         });
     }
 
+    public function onPlan(Plan $plan): static
+    {
+        return $this->afterCreating(function (Business $business) use ($plan): void {
+            $business->subscription->update(['plan' => $plan]);
+        });
+    }
+
     public function expired(): static
     {
         return $this->afterCreating(function (Business $business): void {

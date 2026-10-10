@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use LogicException;
 
 #[Fillable(['name', 'slug', 'acronym', 'currency', 'timezone', 'is_active'])]
@@ -47,6 +48,13 @@ class Business extends Model
      */
     protected static function booted(): void
     {
+        // The acronym is assigned from the name unless one was given.
+        static::creating(function (self $business): void {
+            if (blank($business->acronym)) {
+                $business->acronym = self::acronymFor($business->name);
+            }
+        });
+
         static::created(function (self $business): void {
             app(TenantDatabase::class)->create($business);
         });
@@ -59,6 +67,77 @@ class Business extends Model
                 throw new LogicException('A business cannot be permanently deleted while its database still exists.');
             }
         });
+    }
+
+    /**
+     * The company acronym for a new business: the first letter of each word
+     * of its name, so "Demo Cafe" gives DC. A name of one word gives its
+     * first three letters. If another business already has the acronym, a
+     * number is added: DC2, DC3 and so on.
+     */
+    public static function acronymFor(string $name): string
+    {
+        $words = preg_split('/[^A-Za-z0-9]+/', Str::ascii($name), flags: PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $base = match (count($words)) {
+            0 => 'RH',
+            1 => substr($words[0], 0, 3),
+            default => implode('', array_map(fn (string $word): string => $word[0], $words)),
+        };
+
+        // Room is left for the number within the ten characters allowed.
+        $base = strtoupper(substr($base, 0, 7));
+
+        for ($number = 1; ; $number++) {
+            $acronym = $number === 1 ? $base : $base.$number;
+
+            if (strlen($acronym) >= 2 && self::acronymIsFree($acronym)) {
+                return $acronym;
+            }
+        }
+    }
+
+    /**
+     * How many of something the business has, counted against its plan's
+     * limit: "branches", "terminals" or "staff".
+     */
+    public function usage(string $limit): int
+    {
+        return match ($limit) {
+            'branches' => $this->run(fn (): int => Branch::count()),
+            'terminals' => $this->run(fn (): int => Terminal::count()),
+            'staff' => User::acrossBusinesses()->where('business_id', $this->getKey())->count(),
+        };
+    }
+
+    /**
+     * Whether the plan allows one more branch, POS terminal or staff
+     * account. A business with no subscription cannot sign in at all, so
+     * nothing more is refused here.
+     */
+    public function hasRoomFor(string $limit): bool
+    {
+        $allowed = $this->subscription?->plan->limit($limit);
+
+        return $allowed === null || $this->usage($limit) < $allowed;
+    }
+
+    /**
+     * What to tell someone who has reached the plan's limit.
+     */
+    public function limitReachedMessage(string $limit): string
+    {
+        $plan = $this->subscription->plan;
+        $allowed = $plan->limit($limit);
+        $what = config("plans.limits.{$limit}.".($allowed === 1 ? 'singular' : 'plural'));
+
+        return "The {$plan->label()} plan allows {$allowed} {$what}, and this business has reached that. Contact RasaHub to change plan.";
+    }
+
+    private static function acronymIsFree(string $acronym): bool
+    {
+        return ! in_array($acronym, config('tenancy.reserved_acronyms'), true)
+            && ! self::withTrashed()->where('acronym', $acronym)->exists();
     }
 
     /**
@@ -112,13 +191,14 @@ class Business extends Model
 
     /**
      * The acronym is what staff type to find their company at the POS
-     * sign-in, so it is always stored in capitals.
+     * sign-in, so it is always stored in capitals. The tenant's database is
+     * named after it, so it never changes once the business exists.
      *
-     * @return Attribute<string, string>
+     * @return Attribute<string, string|null>
      */
     protected function acronym(): Attribute
     {
-        return Attribute::make(set: fn (string $value): string => strtoupper(trim($value)));
+        return Attribute::make(set: fn (?string $value): ?string => $value === null ? null : strtoupper(trim($value)));
     }
 
     /**

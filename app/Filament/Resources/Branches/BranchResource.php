@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Branches;
 
+use App\Filament\Concerns\LimitedByPlan;
 use App\Filament\Resources\Branches\Pages\CreateBranch;
 use App\Filament\Resources\Branches\Pages\EditBranch;
 use App\Filament\Resources\Branches\Pages\ListBranches;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class BranchResource extends Resource
 {
+    use LimitedByPlan;
+
     protected static ?string $model = Branch::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;
@@ -42,6 +45,11 @@ class BranchResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
+
+    public static function planLimit(): string
+    {
+        return 'branches';
     }
 
     public static function getPages(): array

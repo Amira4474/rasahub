@@ -21,20 +21,11 @@
 
         <div>
             <label for="business_name" class="{{ $label }}">Business name</label>
-            <input id="business_name" name="business_name" type="text" value="{{ old('business_name') }}" required autofocus maxlength="255" autocomplete="organization"
-                @error('business_name') aria-invalid="true" aria-describedby="business_name-error" @enderror class="{{ $input }}">
+            <input id="business_name" name="business_name" type="text" value="{{ old('business_name') }}" required autofocus maxlength="255" autocomplete="organization" aria-describedby="business_name-help @error('business_name') business_name-error @enderror"
+                @error('business_name') aria-invalid="true" @enderror class="{{ $input }}">
+            <p id="business_name-help" class="mt-2 text-sm text-ink-500">We make your company acronym from its initials: Demo Cafe becomes DC. Your staff type the acronym to sign in to the POS.</p>
             @error('business_name')
                 <p id="business_name-error" class="{{ $error }}">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div>
-            <label for="acronym" class="{{ $label }}">Company acronym</label>
-            <input id="acronym" name="acronym" type="text" value="{{ old('acronym') }}" required minlength="2" maxlength="10" autocapitalize="characters" spellcheck="false" aria-describedby="acronym-help @error('acronym') acronym-error @enderror"
-                @error('acronym') aria-invalid="true" @enderror class="{{ $input }} uppercase tracking-widest">
-            <p id="acronym-help" class="mt-2 text-sm text-ink-500">2 to 10 letters or digits, for example KKB. Your staff type this to sign in to the POS, and it cannot be changed later.</p>
-            @error('acronym')
-                <p id="acronym-error" class="{{ $error }}">{{ $message }}</p>
             @enderror
         </div>
 

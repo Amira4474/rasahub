@@ -27,7 +27,7 @@ class RegisterTenant
     ) {}
 
     /**
-     * @param  array{business_name: string, acronym: string, plan: Plan, name: string, email: string, password: string}  $data
+     * @param  array{business_name: string, plan: Plan, name: string, email: string, password: string}  $data
      *
      * @throws AuthorizationException When the invitation can no longer be used.
      */
@@ -44,7 +44,7 @@ class RegisterTenant
             $business = Business::create([
                 'name' => $data['business_name'],
                 'slug' => $this->uniqueSlug($data['business_name']),
-                'acronym' => $data['acronym'],
+                // Its company acronym is assigned from the name.
                 'currency' => config('tenancy.registration.currency'),
                 'timezone' => config('tenancy.registration.timezone'),
             ]);

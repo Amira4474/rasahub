@@ -23,14 +23,17 @@ class TenantForm
                     ->alphaDash()
                     ->maxLength(255)
                     ->unique(),
+                // The tenant's database is named after the acronym, so it is
+                // set once, when the tenant is created.
                 TextInput::make('acronym')
-                    ->helperText('Staff type this to find their company when signing in to the POS. 2 to 10 letters or digits.')
-                    ->required()
+                    ->helperText('Staff type this to find their company when signing in to the POS, and the tenant\'s database is named after it. Leave it empty to use the initials of the name: "Demo Cafe" gives DC. It cannot be changed later.')
                     ->alphaNum()
                     ->minLength(2)
                     ->maxLength(10)
-                    ->dehydrateStateUsing(fn (string $state): string => strtoupper($state))
-                    ->unique(),
+                    ->notIn(config('tenancy.reserved_acronyms'))
+                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? strtoupper($state) : null)
+                    ->unique()
+                    ->disabledOn('edit'),
                 TextInput::make('currency')
                     ->helperText('Three-letter ISO 4217 code, for example MYR.')
                     ->required()

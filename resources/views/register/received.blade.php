@@ -5,7 +5,12 @@
     <p class="mt-4 text-ink-700">
         Your business and your Owner account have been created. You cannot sign in yet: {{ config('app.name') }} first activates your subscription.
     </p>
-    <p class="mt-3 text-ink-700">
+    <p class="mt-6 rounded-2xl bg-cream-100 px-5 py-4 text-ink-700">
+        Your company acronym is
+        <span class="mx-1 font-mono text-lg font-bold tracking-widest text-ink-900">{{ $registration['acronym'] }}</span>.
+        Your staff type it to sign in to the POS, so keep a note of it.
+    </p>
+    <p class="mt-6 text-ink-700">
         Once it is active, sign in with <span class="font-semibold text-ink-900">{{ $registration['email'] }}</span> and the password you just chose.
     </p>
 

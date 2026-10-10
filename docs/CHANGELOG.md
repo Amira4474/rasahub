@@ -2,9 +2,53 @@
 
 What changed in each version of RasaHub, newest first. The current version is
 in [`VERSION.md`](../VERSION.md) at the project root, and is shown in the
-footer of the platform, tenant admin and POS pages.
+footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
+
+## v0.0.2 (2026-10-10)
+
+Plans with enforced limits, and company acronyms assigned by RasaHub.
+
+### Added
+
+- **The version in the website footer**, next to the platform sign-in icon.
+- **Plans page in the platform panel**, comparing the limits, features and
+  support of Starter, Growth and Enterprise, with the number of tenants on
+  each. The plans are defined in `config/plans.php`.
+- **Plan limits are enforced.** Starter allows 1 branch, 2 POS terminals and
+  5 staff accounts; Growth allows 5 branches; Enterprise is unlimited. At the
+  limit a tenant cannot add more, whatever the user's role, including under
+  Super Impose.
+
+### Changed
+
+- **The company acronym is assigned by RasaHub.** The registration form no
+  longer asks for it. It is the first letter of each word of the business
+  name ("Demo Cafe" becomes `DC`), or the first three letters of a one-word
+  name. If the acronym is taken, a number is added (`DC2`). The new Owner is
+  shown the acronym after registering.
+- **Tenant databases are named after the acronym**: `rasahub_dc` instead of
+  `rasahub_tenant_1`.
+- **In the platform's New tenant form the acronym is optional** (empty means
+  assigned from the name) and can no longer be edited afterwards.
+- **The acronym `TESTING` is reserved**, because `rasahub_testing` is the test
+  suite's database.
+
+### Database
+
+- New central migration
+  `2026_10_10_100000_name_tenant_databases_after_acronyms` moves each existing
+  tenant's tables from `rasahub_tenant_<id>` into `rasahub_<acronym>` and
+  removes the old database.
+- The application's MySQL user now needs rights on `rasahub\_%` rather than
+  `rasahub\_tenant\_%`.
+
+### Upgrading
+
+1. Give the MySQL user its new rights, once:
+   `docker compose exec mysql sh /docker-entrypoint-initdb.d/02-tenant-databases.sh`
+2. Run the central migration: `php artisan migrate`.
 
 ## v0.0.1 (2026-10-10)
 

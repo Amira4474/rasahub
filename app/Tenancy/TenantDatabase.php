@@ -38,6 +38,13 @@ class TenantDatabase
      */
     private int|false|null $connectedTo = false;
 
+    /**
+     * Database names already worked out, by business ID.
+     *
+     * @var array<int, string>
+     */
+    private array $names = [];
+
     public function __construct(private readonly TenantContext $context) {}
 
     /**
@@ -53,16 +60,30 @@ class TenantDatabase
         return $this->connectedTo === null ? null : $this->nameFor($this->connectedTo);
     }
 
+    /**
+     * A tenant's database is named after its company acronym, which never
+     * changes: the acronym DC gives rasahub_dc.
+     */
     public function nameFor(Business|int $business): string
     {
-        $name = config('tenancy.database_prefix').($business instanceof Business ? $business->getKey() : $business);
+        $id = $business instanceof Business ? $business->getKey() : $business;
 
-        // The name is written straight into SQL below, so it is checked here.
-        if (preg_match('/\A[A-Za-z0-9_]{1,64}\z/', $name) !== 1) {
-            throw new InvalidArgumentException("[{$name}] is not a usable tenant database name.");
+        if (isset($this->names[$id])) {
+            return $this->names[$id];
         }
 
-        return $name;
+        $acronym = $business instanceof Business
+            ? $business->acronym
+            : Business::withTrashed()->whereKey($id)->value('acronym');
+
+        $name = config('tenancy.database_prefix').strtolower((string) $acronym);
+
+        // The name is written straight into SQL below, so it is checked here.
+        if ($acronym === null || preg_match('/\A[a-z0-9_]{1,64}\z/', $name) !== 1) {
+            throw new InvalidArgumentException("Business [{$id}] has no usable tenant database name.");
+        }
+
+        return $this->names[$id] = $name;
     }
 
     /**

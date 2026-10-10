@@ -4,7 +4,8 @@ namespace App\Enums;
 
 /**
  * The subscription plans. They match the plans on the website, whose
- * prices and descriptions are in config/marketing.php.
+ * prices and descriptions are in config/marketing.php. What each plan
+ * allows is in config/plans.php.
  */
 enum Plan: string
 {
@@ -19,6 +20,25 @@ enum Plan: string
             self::Growth => 'Growth',
             self::Enterprise => 'Enterprise',
         };
+    }
+
+    /**
+     * The most of something a tenant on this plan may have: "branches",
+     * "terminals" or "staff". Null means unlimited.
+     */
+    public function limit(string $limit): ?int
+    {
+        return config("plans.limits.{$limit}.plans.{$this->value}");
+    }
+
+    public function includes(string $feature): bool
+    {
+        return in_array($this->value, config("plans.features.{$feature}.plans", []), true);
+    }
+
+    public function support(): string
+    {
+        return config("plans.support.{$this->value}");
     }
 
     /**

@@ -31,7 +31,7 @@ same MySQL server.
 | Database | Holds |
 |---|---|
 | Central (`rasahub`) | Businesses, users, roles and permissions, subscriptions, invitations, the audit log, sessions |
-| Tenant (`rasahub_tenant_<business id>`) | That business's branches, POS terminals and branch assignments, and everything later built on them (menus, orders, payments) |
+| Tenant (`rasahub_<acronym>`, for example `rasahub_dc`) | That business's branches, POS terminals and branch assignments, and everything later built on them (menus, orders, payments) |
 
 Users stay in the central database, in one `users` table, because a platform
 user belongs to no tenant and every sign-in page has to find the account
@@ -224,6 +224,7 @@ separately.
 |---|---|---|
 | Tenants | Every business. A tenant's page shows its business information, subscription, database name and counts of branches, POS terminals and staff, and is where Super Impose starts. | View: all platform roles. Create and edit: Super Admin, Admin |
 | Subscriptions | Each tenant's plan, status, start date and end date. Edit, suspend or resume, extend by one month. | View: all platform roles. Change: Super Admin, Admin |
+| Plans | Compare the limits and features of each plan. | Super Admin, Admin, Support |
 | Invitations | Invite someone to register a new tenant. | Super Admin, Admin |
 | Platform users | The people who run the platform. | Super Admin |
 | Audit log | Read-only trail of privileged actions. | Super Admin, Admin |
@@ -253,6 +254,30 @@ usual "credentials do not match" message.
 the tenant's staff sign in. "Extend 1 month" adds a month to the end date of
 a running subscription, or gives an ended one a month from today.
 
+## Plans
+
+What each plan allows is defined in `config/plans.php` and shown in the
+platform panel under **Plans** (every platform role may read it).
+
+| | Starter | Growth | Enterprise |
+|---|---|---|---|
+| Branches | 1 | 5 | Unlimited |
+| POS terminals | 2 | Unlimited | Unlimited |
+| Staff accounts | 5 | Unlimited | Unlimited |
+| Support | Email | Priority | Dedicated account manager |
+
+The limits are enforced in the tenant admin pages. Once a business has as
+many branches, POS terminals or staff accounts as its plan allows, the "New"
+button goes, the list page says why, and the create page refuses to open or
+save. This applies to every role and to a platform user in Super Impose.
+Nothing a tenant already has is removed when it moves to a smaller plan; it
+just cannot add more.
+
+The page also lists the features of each plan. Only two are built so far
+(roles and branch assignment for staff, and more than one branch); the rest
+are marked "Not built yet" and say what the plan will include. Use
+`Plan::includes('kitchen_display')` to gate a feature when it is built.
+
 ## Invitations and registration
 
 Nobody can register without an invitation. A tenant comes into being in one
@@ -267,11 +292,19 @@ the platform so that it can be given to the person invited.
 
 The person invited opens the public page `/register` and enters the token.
 If it is valid they are taken to `/register/details`, where they enter a
-business name, a company acronym, a plan, their name, their email address and
-a password. That creates the business, its database, their Owner account and
+business name, a plan, their name, their email address and a password. That
+creates the business, its database, their Owner account and
 a subscription on the chosen plan with no dates, and uses the token up. They
 cannot sign in yet: a platform user activates the subscription under
 Subscriptions, and sets its dates from then on.
+
+**The company acronym is assigned by RasaHub**, from the first letter of each
+word of the business name: "Demo Cafe" becomes `DC`. A name of one word gives
+its first three letters. If another tenant already has the acronym, including
+a retired one, a number is added: `DC2`, `DC3`. The acronym is what staff type
+at the POS sign-in, and the tenant's database is named after it
+(`rasahub_dc`), so it never changes. The new Owner is shown it after
+registering, and it is under Business settings.
 
 A token works once, until it expires or is revoked. An email address can own
 only one tenant: registration is refused for an address that already has an
@@ -298,7 +331,8 @@ page shows what is pending for the central database and for each tenant.
 
 Send an invitation (see above), or:
 
-1. Platform panel → Tenants → New tenant. Choose its acronym and subscription.
+1. Platform panel → Tenants → New tenant. Choose its subscription, and an
+   acronym or leave that empty to have one assigned from the name.
 2. Super Impose into it.
 3. Staff → New staff member: create the Owner.
 4. Exit Super Impose. The Owner signs in at `/admin/login`.

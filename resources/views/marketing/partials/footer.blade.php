@@ -34,10 +34,14 @@
                 &copy; {{ now()->year }} {{ config('app.name') }}. All rights reserved.
             </p>
 
-            {{-- Platform staff only, so it is an icon rather than a named link. --}}
-            <a href="{{ route('filament.platform.auth.login') }}" title="Platform sign-in" aria-label="Platform sign-in" class="grid size-9 shrink-0 place-items-center rounded-full text-ink-500 transition hover:bg-cream-200 hover:text-chili-500">
-                @svg('heroicon-o-shield-check', 'size-5')
-            </a>
+            <div class="flex shrink-0 items-center gap-3">
+                <span class="text-sm text-ink-500">{{ config('app.version') }}</span>
+
+                {{-- Platform staff only, so it is an icon rather than a named link. --}}
+                <a href="{{ route('filament.platform.auth.login') }}" title="Platform sign-in" aria-label="Platform sign-in" class="grid size-9 place-items-center rounded-full text-ink-500 transition hover:bg-cream-200 hover:text-chili-500">
+                    @svg('heroicon-o-shield-check', 'size-5')
+                </a>
+            </div>
         </div>
     </div>
 </footer>

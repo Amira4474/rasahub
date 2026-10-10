@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Terminals;
 
+use App\Filament\Concerns\LimitedByPlan;
 use App\Filament\Resources\Terminals\Pages\CreateTerminal;
 use App\Filament\Resources\Terminals\Pages\EditTerminal;
 use App\Filament\Resources\Terminals\Pages\ListTerminals;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class TerminalResource extends Resource
 {
+    use LimitedByPlan;
+
     protected static ?string $model = Terminal::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
@@ -45,6 +48,11 @@ class TerminalResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
+
+    public static function planLimit(): string
+    {
+        return 'terminals';
     }
 
     public static function getPages(): array

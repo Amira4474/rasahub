@@ -106,11 +106,12 @@ docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYS
 Tests use a separate database, `rasahub_testing`, created by
 `mysql/init/01-testing-db.sh` the first time the MySQL volume is initialised.
 
-Every tenant has a database of its own, named `rasahub_tenant_<id>`
-(`rasahub_testing_tenant_<id>` during tests), which the application creates
-when the tenant is created. `mysql/init/02-tenant-databases.sh` gives the
+Every tenant has a database of its own, named after its company acronym:
+`rasahub_dc` for the acronym DC (`rasahub_testing_dc` during tests). The
+application creates it when the tenant is created. `mysql/init/02-tenant-databases.sh` gives the
 application's database user the right to do that. On a MySQL volume that
-already existed before that script was added, run it once by hand:
+already existed before that script was added or last changed, run it once by
+hand:
 
 ```
 docker compose exec mysql sh /docker-entrypoint-initdb.d/02-tenant-databases.sh
@@ -122,9 +123,13 @@ database already exists. To start completely clean, list them and drop each
 one first:
 
 ```
-docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES LIKE \"%tenant%\""'
-docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE rasahub_tenant_1"'
+docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES LIKE \"rasahub\\_%\""'
+docker compose exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE rasahub_dc"'
 ```
+
+That list includes `rasahub_testing`, the test suite's own database. Leave
+it in place.
+
 
 ## Files
 

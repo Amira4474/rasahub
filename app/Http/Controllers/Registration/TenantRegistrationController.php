@@ -72,14 +72,10 @@ class TenantRegistrationController extends Controller
             return $this->backToToken($request);
         }
 
-        $request->merge([
-            'acronym' => strtoupper(trim((string) $request->input('acronym'))),
-            'email' => strtolower(trim((string) $request->input('email'))),
-        ]);
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
 
         $data = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
-            'acronym' => ['required', 'string', 'alpha_num:ascii', 'min:2', 'max:10', Rule::unique('businesses', 'acronym')],
             'plan' => ['required', Rule::enum(Plan::class)],
             'name' => ['required', 'string', 'max:255'],
             // One email address signs in to one account, so the owner of
@@ -87,7 +83,6 @@ class TenantRegistrationController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'confirmed', Password::default()],
         ], [
-            'acronym.unique' => 'Another company already uses this acronym. Please choose a different one.',
             'email.unique' => 'This email address already has an account. Please use a different one.',
         ]);
 
@@ -110,6 +105,7 @@ class TenantRegistrationController extends Controller
 
         return redirect()->route('register.received')->with(self::RECEIVED_SESSION_KEY, [
             'business' => $owner->business->name,
+            'acronym' => $owner->business->acronym,
             'email' => $owner->email,
         ]);
     }
