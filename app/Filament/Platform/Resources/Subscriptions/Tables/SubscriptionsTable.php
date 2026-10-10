@@ -9,12 +9,14 @@ use App\Enums\SubscriptionStatus;
 use App\Models\Subscription;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 class SubscriptionsTable
 {
@@ -44,10 +46,12 @@ class SubscriptionsTable
                 TextColumn::make('starts_at')
                     ->label('Start date')
                     ->date()
+                    ->placeholder('Not set')
                     ->sortable(),
                 TextColumn::make('ends_at')
                     ->label('End date')
                     ->date()
+                    ->placeholder('Not set')
                     ->sortable(),
             ])
             ->filters([
@@ -61,17 +65,49 @@ class SubscriptionsTable
                     ))
                     ->query(fn (Builder $query, array $data): Builder => match (SubscriptionStatus::tryFrom($data['value'] ?? '')) {
                         SubscriptionStatus::Suspended => $query->whereNotNull('suspended_at'),
+                        SubscriptionStatus::Pending => $query->whereNull('suspended_at')->where(
+                            fn (Builder $query): Builder => $query->whereNull('starts_at')->orWhereNull('ends_at'),
+                        ),
                         SubscriptionStatus::Expired => $query->whereNull('suspended_at')->whereDate('ends_at', '<', today()),
-                        SubscriptionStatus::Active => $query->whereNull('suspended_at')->whereDate('ends_at', '>=', today()),
+                        SubscriptionStatus::Active => $query->whereNull('suspended_at')->whereNotNull('starts_at')->whereDate('ends_at', '>=', today()),
                         null => $query,
                     }),
             ])
             ->recordActions([
+                Action::make('activate')
+                    ->icon(Heroicon::OutlinedCheckCircle)
+                    ->color('success')
+                    ->visible(fn (Subscription $record): bool => $canManage($record) && $record->status() === SubscriptionStatus::Pending)
+                    ->modalHeading(fn (Subscription $record): string => "Activate {$record->business->name}")
+                    ->modalDescription(fn (Subscription $record): string => "They registered for the {$record->plan->label()} plan. Their staff can sign in once the subscription has its dates.")
+                    ->modalSubmitActionLabel('Activate')
+                    ->schema([
+                        DatePicker::make('starts_at')
+                            ->label('Start date')
+                            ->default(fn (): string => Subscription::firstPeriod()['starts_at']->toDateString())
+                            ->required(),
+                        DatePicker::make('ends_at')
+                            ->label('End date')
+                            ->helperText('The last day the subscription is valid.')
+                            ->default(fn (): string => Subscription::firstPeriod()['ends_at']->toDateString())
+                            ->afterOrEqual('starts_at')
+                            ->required(),
+                    ])
+                    ->action(function (Subscription $record, array $data): void {
+                        $record->activate(Carbon::parse($data['starts_at']), Carbon::parse($data['ends_at']));
+
+                        app(Audit::class)->record(AuditEvent::SubscriptionActivated, $record->business, [
+                            'plan' => $record->plan->value,
+                            'starts_at' => $record->starts_at->toDateString(),
+                            'ends_at' => $record->ends_at->toDateString(),
+                        ]);
+                    })
+                    ->successNotificationTitle('Subscription activated'),
                 Action::make('extend')
                     ->label('Extend 1 month')
                     ->icon(Heroicon::OutlinedCalendarDays)
                     ->color('success')
-                    ->visible($canManage)
+                    ->visible(fn (Subscription $record): bool => $canManage($record) && $record->status() !== SubscriptionStatus::Pending)
                     ->requiresConfirmation()
                     ->modalHeading(fn (Subscription $record): string => "Extend {$record->business->name} by one month")
                     ->modalDescription('A subscription that is still running is extended from its end date. One that has ended gets a month from today.')

@@ -3,21 +3,19 @@
 namespace App\Models;
 
 use App\Enums\InvitationStatus;
-use App\Enums\Plan;
 use Database\Factories\TenantInvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 /**
- * An invitation for one email address to register a new tenant. The token
- * works once and only until it expires or is revoked.
+ * An invitation to register a new tenant. A platform user chooses its token,
+ * such as OCT_RH, and gives it to the person invited, who enters it on the
+ * registration page. It works once and only until it expires or is revoked.
  */
-#[Fillable(['email', 'plan', 'token_hash', 'expires_at', 'accepted_at', 'revoked_at', 'business_id', 'created_by'])]
-#[Hidden(['token_hash'])]
+#[Fillable(['token', 'note', 'expires_at', 'accepted_at', 'revoked_at', 'business_id', 'created_by'])]
 class TenantInvitation extends Model
 {
     /** @use HasFactory<TenantInvitationFactory> */
@@ -25,33 +23,58 @@ class TenantInvitation extends Model
 
     public const DEFAULT_DAYS_VALID = 7;
 
+    public const TOKEN_MIN_LENGTH = 4;
+
+    public const TOKEN_MAX_LENGTH = 32;
+
     /**
-     * Give the invitation a fresh token and return it. Only its hash is
-     * stored, so this return value is the one chance to read the token; any
-     * earlier token stops working.
+     * Letters, digits, hyphens and underscores.
      */
-    public function issueToken(): string
+    public const TOKEN_PATTERN = '/^[A-Za-z0-9_-]+$/';
+
+    /**
+     * Letters and digits that are hard to confuse when read aloud or typed:
+     * no 0 or O, no 1, I or L.
+     */
+    private const SUGGESTION_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+    /**
+     * A token nobody could guess, offered when an invitation is made. The
+     * platform user may replace it with one of their own.
+     */
+    public static function suggestToken(): string
     {
-        $token = Str::random(48);
+        $code = '';
 
-        $this->token_hash = self::hash($token);
+        for ($i = 0; $i < 8; $i++) {
+            $code .= self::SUGGESTION_ALPHABET[random_int(0, strlen(self::SUGGESTION_ALPHABET) - 1)];
+        }
 
-        return $token;
+        return 'RH-'.implode('-', str_split($code, 4));
     }
 
     public static function findByToken(string $token): ?self
     {
-        return self::where('token_hash', self::hash($token))->first();
+        return self::where('token', self::normalise($token))->first();
     }
 
-    private static function hash(string $token): string
+    /**
+     * Tokens are stored and compared in capitals, so it does not matter how
+     * someone types one.
+     */
+    public static function normalise(string $token): string
     {
-        return hash('sha256', $token);
+        return strtoupper(trim($token));
     }
 
-    public function registrationUrl(string $token): string
+    /**
+     * What the audit log records about the invitation.
+     *
+     * @return array<string, mixed>
+     */
+    public function auditProperties(): array
     {
-        return route('register.show', ['token' => $token]);
+        return array_filter(['invitation_id' => $this->getKey(), 'token' => $this->token, 'note' => $this->note]);
     }
 
     public function status(): InvitationStatus
@@ -88,6 +111,14 @@ class TenantInvitation extends Model
     }
 
     /**
+     * @return Attribute<string, string>
+     */
+    protected function token(): Attribute
+    {
+        return Attribute::make(set: fn (string $value): string => self::normalise($value));
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -95,7 +126,6 @@ class TenantInvitation extends Model
     protected function casts(): array
     {
         return [
-            'plan' => Plan::class,
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
             'revoked_at' => 'datetime',

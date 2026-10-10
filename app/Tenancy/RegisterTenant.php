@@ -4,9 +4,9 @@ namespace App\Tenancy;
 
 use App\Audit\Audit;
 use App\Enums\AuditEvent;
+use App\Enums\Plan;
 use App\Enums\Role;
 use App\Models\Business;
-use App\Models\Subscription;
 use App\Models\TenantInvitation;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,8 +15,9 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Turns an invitation into a working tenant: the business with its own
- * database, its first subscription period, and its Owner.
+ * Turns an invitation into a tenant: the business with its own database,
+ * its Owner, and a subscription on the chosen plan that has no dates until
+ * a platform user activates it.
  */
 class RegisterTenant
 {
@@ -26,14 +27,14 @@ class RegisterTenant
     ) {}
 
     /**
-     * @param  array{business_name: string, acronym: string, name: string, password: string}  $data
+     * @param  array{business_name: string, acronym: string, plan: Plan, name: string, email: string, password: string}  $data
      *
      * @throws AuthorizationException When the invitation can no longer be used.
      */
     public function handle(TenantInvitation $invitation, array $data): User
     {
         return DB::transaction(function () use ($invitation, $data): User {
-            // Locked so that the same link cannot be used twice at once.
+            // Locked so that the same token cannot be used twice at once.
             $invitation = TenantInvitation::lockForUpdate()->findOrFail($invitation->getKey());
 
             if (! $invitation->isUsable()) {
@@ -49,16 +50,14 @@ class RegisterTenant
             ]);
 
             try {
-                $business->subscription()->create(['plan' => $invitation->plan, ...Subscription::firstPeriod()]);
+                $business->subscription()->create(['plan' => $data['plan']]);
 
                 $owner = new User([
                     'name' => $data['name'],
-                    'email' => $invitation->email,
+                    'email' => $data['email'],
                     'password' => $data['password'],
                     'business_id' => $business->getKey(),
                 ]);
-                // They reached the link sent to this address.
-                $owner->email_verified_at = now();
                 $owner->save();
                 $owner->assignRole(Role::Owner);
 
@@ -66,7 +65,8 @@ class RegisterTenant
 
                 $this->audit->record(AuditEvent::TenantRegistered, $business, [
                     'email' => $owner->email,
-                    'plan' => $invitation->plan->value,
+                    'plan' => $data['plan']->value,
+                    'invitation_id' => $invitation->getKey(),
                 ], actor: $owner, superImpose: false);
 
                 return $owner;

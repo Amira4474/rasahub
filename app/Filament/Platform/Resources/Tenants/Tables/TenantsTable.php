@@ -34,7 +34,8 @@ class TenantsTable
                     ->placeholder('None'),
                 TextColumn::make('subscription.ends_at')
                     ->label('Ends')
-                    ->date(),
+                    ->date()
+                    ->placeholder('Not set'),
                 // A platform user reaches no tenant users by default, so
                 // this count deliberately reads across businesses.
                 TextColumn::make('users_count')

@@ -35,17 +35,6 @@ class TenantInvitationPolicy
         return $user->can(Permission::ManageInvitations) && $invitation->isUsable();
     }
 
-    /**
-     * A new link can be made for an invitation that is pending or has
-     * expired, but not for one that was used or revoked.
-     */
-    public function reissue(User $user, TenantInvitation $invitation): bool
-    {
-        return $user->can(Permission::ManageInvitations)
-            && $invitation->accepted_at === null
-            && $invitation->revoked_at === null;
-    }
-
     public function delete(User $user, TenantInvitation $invitation): bool
     {
         return false;

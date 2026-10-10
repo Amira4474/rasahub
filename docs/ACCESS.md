@@ -201,7 +201,7 @@ Entries are written through `App\Audit\Audit` and are never edited.
 
 Recorded today: Super Impose started and exited (including by sign-out),
 platform user sign-ins, changes to a user's roles, subscription changes
-(edited, suspended, resumed, extended), invitations (created, new link,
+(activated, edited, suspended, resumed, extended), invitations (created,
 revoked), tenant registrations, and migrations run from the platform. The log
 is read at `/platform/audit-log`.
 
@@ -232,12 +232,14 @@ separately.
 ## Subscriptions
 
 Every business has exactly one subscription (`subscriptions`, central
-database): a plan, a start date and an end date. The plans are the three on
+database): a plan, a start date and an end date. A tenant that registered
+itself has a plan but no dates until a platform user activates it. The plans are the three on
 the website (`App\Enums\Plan`). No payment is taken; this records what a
 tenant is entitled to.
 
 | Status | When | Tenant's own staff |
 |---|---|---|
+| Pending activation | Registered, no dates set yet | Cannot sign in |
 | Active | Not suspended, and today is on or before the end date | Can sign in |
 | Expired | Today is after the end date | Cannot sign in |
 | Suspended | Suspended in the platform, whatever the dates | Cannot sign in |
@@ -247,23 +249,35 @@ anyone already signed in is signed out on their next request. Once they have
 entered a correct password they are told why. Everyone else still gets the
 usual "credentials do not match" message.
 
-"Extend 1 month" adds a month to the end date of a running subscription, or
-gives an ended one a month from today.
+"Activate" gives a pending subscription its start and end dates, which lets
+the tenant's staff sign in. "Extend 1 month" adds a month to the end date of
+a running subscription, or gives an ended one a month from today.
 
 ## Invitations and registration
 
-There is no open sign-up. A tenant comes into being in one of two ways.
+Nobody can register without an invitation. A tenant comes into being in one
+of two ways.
 
-**By invitation.** Platform panel → Invitations → New invitation: an email
-address, a plan and an expiry (7 days by default). The registration link is
-shown once, to be copied and sent. Only a hash of its token is stored, so it
-cannot be shown again; "Make a new link" replaces it.
+**By invitation.** Platform panel → Invitations → New invitation: a token,
+an optional note of who it is for, and an expiry (7 days by default). The
+platform user chooses the token, for example `OCT_RH` (4 to 32 letters,
+digits, hyphens or underscores, stored in capitals); a random one is
+suggested. Each token is used for one invitation only. It stays visible in
+the platform so that it can be given to the person invited.
 
-The link opens `/register/<token>`, where the invited person enters a
-business name, a company acronym, their name and a password. That creates
-the business, its database, a one-month subscription on the invited plan and
-their Owner account, signs them in, and uses the invitation up. A link works
-once, for one email address, until it expires or is revoked.
+The person invited opens the public page `/register` and enters the token.
+If it is valid they are taken to `/register/details`, where they enter a
+business name, a company acronym, a plan, their name, their email address and
+a password. That creates the business, its database, their Owner account and
+a subscription on the chosen plan with no dates, and uses the token up. They
+cannot sign in yet: a platform user activates the subscription under
+Subscriptions, and sets its dates from then on.
+
+A token works once, until it expires or is revoked. An email address can own
+only one tenant: registration is refused for an address that already has an
+account. Token attempts are limited to 5 a minute, and the page gives the same
+answer for a token that is wrong, used, expired or revoked. A short or
+obvious token is still easier to guess than the suggested one.
 
 **By the platform.** Platform panel → Tenants → New tenant, then Super
 Impose into it and add the Owner under Staff.

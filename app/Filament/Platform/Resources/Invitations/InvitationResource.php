@@ -16,8 +16,8 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 /**
- * Invitations to register a new tenant. Each one is for a single email
- * address and its link works once.
+ * Invitations to register a new tenant. Each one is a token chosen here
+ * that works once, typed on the public registration page.
  */
 class InvitationResource extends Resource
 {
@@ -31,7 +31,7 @@ class InvitationResource extends Resource
 
     protected static ?string $modelLabel = 'invitation';
 
-    protected static ?string $recordTitleAttribute = 'email';
+    protected static ?string $recordTitleAttribute = 'token';
 
     public static function form(Schema $schema): Schema
     {

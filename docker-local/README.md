@@ -20,10 +20,10 @@ docker compose down       # stop; keeps the database and dependencies
 
 | What | URL |
 |---|---|
-| Application | http://localhost:8080 |
-| Platform panel | http://localhost:8080/platform |
-| Tenant admin panel | http://localhost:8080/admin |
-| Staff POS | http://localhost:8080/pos |
+| Application | http://localhost |
+| Platform panel | http://localhost/platform |
+| Tenant admin panel | http://localhost/admin |
+| Staff POS | http://localhost/pos |
 | Vite dev server (hot reload) | http://localhost:5173 |
 | MySQL from a database client | `127.0.0.1:3307` |
 

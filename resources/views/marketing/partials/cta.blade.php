@@ -8,14 +8,14 @@
                 Ready when your doors open
             </h2>
             <p class="mx-auto mt-5 max-w-xl text-lg text-pretty text-white/90">
-                New accounts are opening soon. If your business already has one, sign in to manage your branches, terminals and team.
+                New businesses join by invitation. Register with your token, or sign in if your business already has an account.
             </p>
             <div class="mt-9 flex flex-wrap justify-center gap-4">
-                <a href="{{ config('marketing.sign_in_url') }}" class="rounded-full bg-white px-8 py-3.5 text-base font-semibold text-ink-900 transition hover:-translate-y-0.5 hover:bg-cream-100">
-                    Sign in
+                <a href="{{ route('register.show') }}" class="rounded-full bg-white px-8 py-3.5 text-base font-semibold text-ink-900 transition hover:-translate-y-0.5 hover:bg-cream-100">
+                    Register with a token
                 </a>
-                <a href="#features" class="rounded-full border border-white/50 px-8 py-3.5 text-base font-semibold text-white transition hover:bg-white/10">
-                    See what is live
+                <a href="{{ config('marketing.sign_in_url') }}" class="rounded-full border border-white/50 px-8 py-3.5 text-base font-semibold text-white transition hover:bg-white/10">
+                    Sign in
                 </a>
             </div>
         </div>

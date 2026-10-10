@@ -2,7 +2,6 @@
 
 namespace App\Filament\Platform\Resources\Invitations\Tables;
 
-use App\Enums\Plan;
 use App\Models\TenantInvitation;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -17,11 +16,14 @@ class InvitationsTable
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['business', 'creator']))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('email')
-                    ->label('Email address')
+                TextColumn::make('token')
+                    ->fontFamily('mono')
+                    ->copyable()
                     ->searchable(),
-                TextColumn::make('plan')
-                    ->formatStateUsing(fn (Plan $state): string => $state->label()),
+                TextColumn::make('note')
+                    ->label('For')
+                    ->placeholder('Not noted')
+                    ->searchable(),
                 TextColumn::make('status')
                     ->state(fn (TenantInvitation $record): string => $record->status()->label())
                     ->badge()

@@ -50,6 +50,16 @@ class BusinessFactory extends Factory
         });
     }
 
+    /**
+     * Registered, but not yet activated by a platform user.
+     */
+    public function pendingActivation(): static
+    {
+        return $this->afterCreating(function (Business $business): void {
+            $business->subscription->update(['starts_at' => null, 'ends_at' => null]);
+        });
+    }
+
     public function suspended(): static
     {
         return $this->afterCreating(function (Business $business): void {

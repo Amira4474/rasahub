@@ -12,7 +12,8 @@ use Illuminate\Support\Carbon;
 /**
  * A business's subscription to RasaHub. It records the plan and the dates;
  * no payment is taken here. Only an active subscription lets the business's
- * own staff sign in.
+ * own staff sign in. A tenant that registered itself has no dates until a
+ * platform user activates it.
  */
 #[Fillable(['business_id', 'plan', 'starts_at', 'ends_at', 'suspended_at', 'suspension_reason'])]
 class Subscription extends Model
@@ -29,6 +30,7 @@ class Subscription extends Model
     {
         return match (true) {
             $this->suspended_at !== null => SubscriptionStatus::Suspended,
+            $this->starts_at === null || $this->ends_at === null => SubscriptionStatus::Pending,
             // The end date is the last valid day.
             $this->ends_at->lt(today()) => SubscriptionStatus::Expired,
             default => SubscriptionStatus::Active,
@@ -51,12 +53,22 @@ class Subscription extends Model
     }
 
     /**
+     * Give the subscription its dates. This is what lets a tenant that
+     * registered itself start signing in.
+     */
+    public function activate(Carbon $startsAt, Carbon $endsAt): void
+    {
+        $this->update(['starts_at' => $startsAt, 'ends_at' => $endsAt]);
+    }
+
+    /**
      * Add one month. A subscription that is still running is extended from
-     * its end date; one that has already ended gets a month from today.
+     * its end date; one that has already ended, or never started, gets a
+     * month from today.
      */
     public function extendByOneMonth(): void
     {
-        $from = $this->ends_at->lt(today()) ? today() : $this->ends_at;
+        $from = $this->ends_at === null || $this->ends_at->lt(today()) ? today() : $this->ends_at;
 
         $this->update(['ends_at' => $from->copy()->addMonthNoOverflow()]);
     }

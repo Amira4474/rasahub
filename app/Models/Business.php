@@ -103,6 +103,7 @@ class Business extends Model
 
         return match ($this->subscription?->status()) {
             SubscriptionStatus::Active => null,
+            SubscriptionStatus::Pending => 'This company\'s registration is waiting for RasaHub to activate it. You will be able to sign in once it has been activated.',
             SubscriptionStatus::Suspended => 'This company\'s subscription is suspended. Please contact RasaHub support.',
             SubscriptionStatus::Expired => 'This company\'s subscription ended on '.$this->subscription->ends_at->format('j F Y').'. Please contact RasaHub support to renew it.',
             null => 'This company has no subscription. Please contact RasaHub support.',

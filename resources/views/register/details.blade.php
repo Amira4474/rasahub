@@ -4,25 +4,19 @@
     $error = 'mt-2 text-sm font-medium text-chili-600';
 @endphp
 
-<x-register.layout title="Set up your business">
-    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-chili-500">You are invited</p>
-    <h1 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink-900">Set up your business</h1>
+<x-register.layout title="Register your business">
+    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-chili-500">Step 2 of 2</p>
+    <h1 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink-900">Your business details</h1>
     <p class="mt-3 text-ink-700">
-        This creates your business on {{ config('app.name') }} and your own Owner account.
+        This creates your business on {{ config('app.name') }} and your own Owner account. We activate your subscription after you register, and you can sign in from then on.
     </p>
 
-    <dl class="mt-6 grid gap-4 rounded-2xl bg-cream-100 px-5 py-4 sm:grid-cols-2">
-        <div class="min-w-0">
-            <dt class="text-sm text-ink-500">Your sign-in email</dt>
-            <dd class="truncate font-semibold text-ink-900">{{ $invitation->email }}</dd>
-        </div>
-        <div>
-            <dt class="text-sm text-ink-500">Plan</dt>
-            <dd class="font-semibold text-ink-900">{{ $invitation->plan->label() }}</dd>
-        </div>
-    </dl>
+    <p class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-cream-100 px-5 py-4 text-sm">
+        <span class="text-ink-500">Token <span class="ml-2 font-mono font-semibold tracking-widest text-ink-900">{{ $invitation->token }}</span></span>
+        <a href="{{ route('register.show') }}" class="font-semibold text-chili-600 underline-offset-4 hover:underline">Use a different token</a>
+    </p>
 
-    <form method="POST" action="{{ route('register.store', ['token' => $token]) }}" class="mt-8 space-y-5">
+    <form method="POST" action="{{ route('register.store') }}" class="mt-8 space-y-5">
         @csrf
 
         <div>
@@ -45,11 +39,37 @@
         </div>
 
         <div>
+            <label for="plan" class="{{ $label }}">Plan</label>
+            <select id="plan" name="plan" required aria-describedby="plan-help @error('plan') plan-error @enderror"
+                @error('plan') aria-invalid="true" @enderror class="{{ $input }}">
+                @foreach ($plans as $plan)
+                    <option value="{{ $plan->value }}" @selected(old('plan', $plans[0]->value) === $plan->value)>{{ $plan->label() }}</option>
+                @endforeach
+            </select>
+            <p id="plan-help" class="mt-2 text-sm text-ink-500">
+                <a href="{{ route('home') }}#pricing" target="_blank" rel="noopener" class="font-semibold text-chili-600 underline-offset-4 hover:underline">Compare the plans</a> (opens in a new tab).
+            </p>
+            @error('plan')
+                <p id="plan-error" class="{{ $error }}">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
             <label for="name" class="{{ $label }}">Your name</label>
             <input id="name" name="name" type="text" value="{{ old('name') }}" required maxlength="255" autocomplete="name"
                 @error('name') aria-invalid="true" aria-describedby="name-error" @enderror class="{{ $input }}">
             @error('name')
                 <p id="name-error" class="{{ $error }}">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="email" class="{{ $label }}">Your email address</label>
+            <input id="email" name="email" type="email" value="{{ old('email') }}" required maxlength="255" autocomplete="email" aria-describedby="email-help @error('email') email-error @enderror"
+                @error('email') aria-invalid="true" @enderror class="{{ $input }}">
+            <p id="email-help" class="mt-2 text-sm text-ink-500">You sign in with this as the Owner of the business.</p>
+            @error('email')
+                <p id="email-error" class="{{ $error }}">{{ $message }}</p>
             @enderror
         </div>
 
@@ -69,7 +89,7 @@
         </div>
 
         <button type="submit" class="w-full rounded-full bg-chili-500 px-6 py-4 text-base font-semibold text-white transition hover:bg-chili-600 focus:outline-none focus:ring-4 focus:ring-chili-500/30">
-            Create my business
+            Register my business
         </button>
     </form>
 </x-register.layout>

@@ -16,12 +16,15 @@ Route::view('/', 'marketing.home')->name('home');
 |   /pos       staff on shift        (below)
 */
 
-// A new tenant registers with the link from an invitation; there is no open
-// sign-up. The token is part of the address, so it is kept out of the logs
-// of other sites by the page's no-referrer policy.
-Route::prefix('register/{token}')->name('register.')->middleware('throttle:10,1')->group(function () {
-    Route::get('/', [TenantRegistrationController::class, 'show'])->name('show');
-    Route::post('/', [TenantRegistrationController::class, 'store'])->name('store');
+// A new tenant registers in two steps: the token from an invitation, then
+// the business details. Nothing is created without a valid token, and
+// attempts are limited so that tokens cannot be guessed.
+Route::prefix('register')->name('register.')->group(function () {
+    Route::get('/', [TenantRegistrationController::class, 'showToken'])->name('show');
+    Route::post('/', [TenantRegistrationController::class, 'storeToken'])->middleware('throttle:5,1')->name('token');
+    Route::get('details', [TenantRegistrationController::class, 'showDetails'])->name('details');
+    Route::post('details', [TenantRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('store');
+    Route::get('received', [TenantRegistrationController::class, 'received'])->name('received');
 });
 
 Route::post('/super-impose/exit', ExitSuperImposeController::class)->name('super-impose.exit');

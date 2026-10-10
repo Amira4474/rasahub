@@ -20,19 +20,9 @@ class CreateInvitation extends CreateRecord
      */
     protected function handleRecordCreation(array $data): Model
     {
-        $invitation = new TenantInvitation([...$data, 'created_by' => auth()->id()]);
+        $invitation = TenantInvitation::create([...$data, 'created_by' => auth()->id()]);
 
-        $token = $invitation->issueToken();
-
-        $invitation->save();
-
-        app(Audit::class)->record(AuditEvent::InvitationCreated, properties: [
-            'email' => $invitation->email,
-            'plan' => $invitation->plan->value,
-        ]);
-
-        // The next page shows the link, once.
-        session()->flash(ViewInvitation::LINK_SESSION_KEY, $invitation->registrationUrl($token));
+        app(Audit::class)->record(AuditEvent::InvitationCreated, properties: $invitation->auditProperties());
 
         return $invitation;
     }

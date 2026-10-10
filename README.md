@@ -33,10 +33,10 @@ docker compose up -d
 
 | | URL |
 |---|---|
-| Public website | http://localhost:8080 |
-| Platform panel | http://localhost:8080/platform |
-| Tenant admin panel | http://localhost:8080/admin |
-| Staff POS | http://localhost:8080/pos |
+| Public website | http://localhost |
+| Platform panel | http://localhost/platform |
+| Tenant admin panel | http://localhost/admin |
+| Staff POS | http://localhost/pos |
 
 ## Domain foundation
 
@@ -66,6 +66,7 @@ subscriptions, invitations and migrations are described in
 ## Documents
 
 - [docs/ACCESS.md](docs/ACCESS.md): how access, tenancy, Super Impose, subscriptions, invitations and migrations work.
+- [docs/CHANGELOG.md](docs/CHANGELOG.md): what changed in each version. The current version is in [VERSION.md](VERSION.md).
 - [docs/SYSTEMCONCEPT.md](docs/SYSTEMCONCEPT.md): the original system concept.
 - [docs/DifferentAccess.md](docs/DifferentAccess.md): the access requirements.
 - [SYSTEMARCHITECTURE.md](SYSTEMARCHITECTURE.md): the full-Docker architecture brief.

@@ -2,8 +2,6 @@
 
 namespace App\Filament\Platform\Resources\Invitations\Schemas;
 
-use App\Enums\Plan;
-use App\Filament\Platform\Resources\Invitations\Pages\ViewInvitation;
 use App\Models\TenantInvitation;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -15,26 +13,28 @@ class InvitationInfolist
     {
         return $schema
             ->components([
-                // The link can only be shown straight after it is made,
-                // because only a hash of the token is stored.
-                Section::make('Registration link')
-                    ->description('Copy this link and send it to the person you are inviting. It is shown only once.')
-                    ->visible(fn (ViewInvitation $livewire): bool => $livewire->link !== null)
+                Section::make('Registration token')
+                    ->description('Give this token to the person you are inviting. They enter it on the registration page, then fill in their business details.')
+                    ->columns(2)
                     ->schema([
-                        TextEntry::make('link')
-                            ->hiddenLabel()
-                            ->state(fn (ViewInvitation $livewire): ?string => $livewire->link)
+                        TextEntry::make('token')
                             ->copyable()
-                            ->copyMessage('Link copied')
+                            ->copyMessage('Token copied')
+                            ->fontFamily('mono')
+                            ->weight('bold'),
+                        TextEntry::make('registration_page')
+                            ->label('They enter it at')
+                            ->state(fn (): string => route('register.show'))
+                            ->copyable()
+                            ->copyMessage('Address copied')
                             ->fontFamily('mono'),
                     ]),
                 Section::make('Invitation')
                     ->columns(3)
                     ->schema([
-                        TextEntry::make('email')
-                            ->label('Email address'),
-                        TextEntry::make('plan')
-                            ->formatStateUsing(fn (Plan $state): string => $state->label()),
+                        TextEntry::make('note')
+                            ->label('For')
+                            ->placeholder('Not noted'),
                         TextEntry::make('status')
                             ->state(fn (TenantInvitation $record): string => $record->status()->label())
                             ->badge()

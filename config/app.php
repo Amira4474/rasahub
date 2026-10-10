@@ -17,6 +17,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Version
+    |--------------------------------------------------------------------------
+    |
+    | The release of RasaHub that is running, shown in the footer of the
+    | platform, admin and POS pages. It is read from VERSION.md at the
+    | project root: change it there when a release is made, and describe
+    | the release in docs/CHANGELOG.md.
+    |
+    */
+
+    'version' => trim((string) @file_get_contents(dirname(__DIR__).'/VERSION.md')) ?: 'v0.0.0',
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

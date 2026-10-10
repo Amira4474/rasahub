@@ -57,7 +57,6 @@ class Migrations extends Page implements HasTable
             Action::make('migrateCentral')
                 ->label('Run central migrations')
                 ->icon(Heroicon::OutlinedPlay)
-                ->disabled(fn (): bool => $this->centralPending() === [])
                 ->requiresConfirmation()
                 ->modalDescription('This changes the central database. Back it up first if it holds anything you cannot afford to lose.')
                 ->action(function (): void {
@@ -69,11 +68,7 @@ class Migrations extends Page implements HasTable
                 ->color('gray')
                 ->requiresConfirmation()
                 ->modalDescription('This runs the outstanding tenant migrations in every tenant database, one tenant at a time.')
-                ->action(function (): void {
-                    foreach (Business::withTrashed()->orderBy('id')->get() as $tenant) {
-                        $this->migrateTenant($tenant);
-                    }
-                }),
+                ->action(fn () => $this->migrateTenants()),
         ];
     }
 
@@ -126,17 +121,50 @@ class Migrations extends Page implements HasTable
         return $pending === 0 ? 'Up to date' : "{$pending} pending";
     }
 
-    private function migrateTenant(Business $tenant): void
+    private function migrateTenant(Business $tenant, bool $quietWhenUpToDate = false): bool
     {
-        $this->report($tenant->name, fn (): array => app(TenantDatabase::class)->migrate($tenant), $tenant);
+        return $this->report(
+            $tenant->name,
+            fn (): array => app(TenantDatabase::class)->migrate($tenant),
+            $tenant,
+            $quietWhenUpToDate,
+        );
     }
 
     /**
-     * Run the migrations, record what happened and tell the user.
+     * Migrate every tenant, with one message when there was nothing to do
+     * rather than one per tenant.
+     */
+    private function migrateTenants(): void
+    {
+        $tenants = Business::withTrashed()->orderBy('id')->get();
+
+        if ($tenants->isEmpty()) {
+            Notification::make()
+                ->title('No tenants to migrate')
+                ->body('There are no tenant databases yet.')
+                ->send();
+
+            return;
+        }
+
+        $changed = $tenants->filter(fn (Business $tenant): bool => $this->migrateTenant($tenant, quietWhenUpToDate: true));
+
+        if ($changed->isEmpty()) {
+            Notification::make()
+                ->title('No pending tenant migrations')
+                ->body('Every tenant database is already up to date.')
+                ->send();
+        }
+    }
+
+    /**
+     * Run the migrations, record what happened and tell the user. Returns
+     * whether anything happened that the user has been told about.
      *
      * @param  callable(): list<string>  $migrate
      */
-    private function report(string $database, callable $migrate, ?Business $tenant = null): void
+    private function report(string $database, callable $migrate, ?Business $tenant = null, bool $quietWhenUpToDate = false): bool
     {
         try {
             $ran = $migrate();
@@ -150,13 +178,18 @@ class Migrations extends Page implements HasTable
                 ->persistent()
                 ->send();
 
-            return;
+            return true;
         }
 
         if ($ran === []) {
-            Notification::make()->title("{$database}: nothing to migrate")->send();
+            if (! $quietWhenUpToDate) {
+                Notification::make()
+                    ->title("{$database}: no pending migrations")
+                    ->body('It is already up to date.')
+                    ->send();
+            }
 
-            return;
+            return false;
         }
 
         app(Audit::class)->record(AuditEvent::MigrationsRun, $tenant, [
@@ -169,5 +202,7 @@ class Migrations extends Page implements HasTable
             ->title("{$database}: ".count($ran).' migrated')
             ->body(implode(', ', $ran))
             ->send();
+
+        return true;
     }
 }

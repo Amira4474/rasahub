@@ -51,10 +51,12 @@ class TenantInfolist
                             ->placeholder('None'),
                         TextEntry::make('subscription.starts_at')
                             ->label('Start date')
-                            ->date(),
+                            ->date()
+                            ->placeholder('Not set'),
                         TextEntry::make('subscription.ends_at')
                             ->label('End date')
-                            ->date(),
+                            ->date()
+                            ->placeholder('Not set'),
                         TextEntry::make('subscription.suspension_reason')
                             ->label('Suspension reason')
                             ->visible(fn (Business $record): bool => $record->subscription?->suspended_at !== null)
