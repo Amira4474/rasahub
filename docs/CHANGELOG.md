@@ -6,6 +6,62 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.1.0 (2026-10-30)
+
+The menu: categories, products, modifier groups and set meals, the first
+release of the plan in [ROADMAP.md](ROADMAP.md).
+
+### Added
+
+- **Menu section in the tenant admin**, with Categories, Products and
+  Modifiers.
+- **Categories**, with one optional level of nesting (Drinks › Coffee), a
+  POS button colour, drag-and-drop ordering and an active switch. A category
+  that still has products or sub-categories cannot be deleted.
+- **Products**: category, name, optional SKU, description, photo, price
+  (including SST), active switch and drag-and-drop ordering. Photos are kept
+  per tenant under `storage/app/public/tenants/<acronym>/products`.
+- **Modifier groups**, reusable across products: a minimum and maximum
+  number of choices ("Choose 1", "Optional, up to 3"), and options with a
+  price change, a default and an active switch. A group cannot start with
+  more options chosen than it allows.
+- **Set meals**: a product of type "Set meal" with choices such as "Choose a
+  drink", each listing single items that may be chosen and any extra charge.
+  A set cannot contain another set.
+- **Products per branch**: a product can be marked sold out at a branch.
+  On Growth and Enterprise a branch can also have its own price. Each user
+  only sees the branches they work in.
+- **Price history** on each product: every change of its own price or a
+  branch price, with who made it and when.
+- **Permissions** `catalogue.view`, `catalogue.manage` and
+  `catalogue.availability`. Owners and Managers manage the menu; Supervisors
+  view it and set availability at their branches; the Inventory role can now
+  sign in to the admin to view the menu.
+- **`docs/ROADMAP.md`**: the decisions made and the plan for the releases up
+  to QR ordering.
+
+### Changed
+
+- **Plans page**: "Menus, categories and modifiers" and the new "Set meals"
+  and "Per-branch prices" are marked as built. "Per-branch pricing and
+  reports" is split into "Per-branch prices" and "Per-branch reports".
+
+### Database
+
+- Tenant migrations `2026_10_30_100000` to `2026_10_30_100002` add
+  `categories`, `modifier_groups`, `modifiers`, `products`,
+  `modifier_group_product`, `branch_product`, `product_price_changes`,
+  `set_groups` and `set_group_items` to every tenant database. Money is
+  `DECIMAL(12,2)`.
+
+### Upgrading
+
+1. Sync roles and permissions: `php artisan db:seed`.
+2. Migrate every tenant: `php artisan tenants:migrate`, or Platform →
+   Migrations → Migrate all tenants.
+3. Link public storage once, for product photos:
+   `php artisan storage:link`.
+
 ## v0.0.2 (2026-10-10)
 
 Plans with enforced limits, and company acronyms assigned by RasaHub.

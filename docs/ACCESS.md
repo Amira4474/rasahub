@@ -89,6 +89,15 @@ There is one global set, defined in `app/Enums/Role.php` and
 | Platform Admin | Manage tenants, subscriptions and invitations, Super Impose, read the audit log |
 | Platform Support | View tenants and their subscriptions |
 
+| Business role | Can |
+|---|---|
+| Owner | Everything in the business: settings, branches, terminals, staff and the menu, at every branch |
+| Manager | View the business, branches and staff; manage terminals and the menu; set availability at their branches |
+| Supervisor | View their branches, terminals and the menu; mark products sold out at their branches |
+| Cashier, Waiter | The POS only |
+| Inventory | View the menu |
+| Kitchen | Nothing yet (the kitchen display arrives in v0.5.0) |
+
 Every permission check is answered in one place, the `Gate::before` rule in
 `AppServiceProvider`:
 

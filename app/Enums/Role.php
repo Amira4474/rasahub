@@ -93,6 +93,9 @@ enum Role: string
                 Permission::CreateUsers,
                 Permission::UpdateUsers,
                 Permission::DeleteUsers,
+                Permission::ViewCatalogue,
+                Permission::ManageCatalogue,
+                Permission::SetProductAvailability,
             ],
             self::Manager => [
                 Permission::AccessAdminPanel,
@@ -103,15 +106,24 @@ enum Role: string
                 Permission::CreateTerminals,
                 Permission::UpdateTerminals,
                 Permission::ViewUsers,
+                Permission::ViewCatalogue,
+                Permission::ManageCatalogue,
+                Permission::SetProductAvailability,
             ],
             self::Supervisor => [
                 Permission::AccessAdminPanel,
                 Permission::AccessPos,
                 Permission::ViewBranches,
                 Permission::ViewTerminals,
+                Permission::ViewCatalogue,
+                Permission::SetProductAvailability,
             ],
             self::Cashier, self::Waiter => [
                 Permission::AccessPos,
+            ],
+            self::Inventory => [
+                Permission::AccessAdminPanel,
+                Permission::ViewCatalogue,
             ],
             default => [],
         };

@@ -62,7 +62,12 @@ return [
         'menus' => [
             'label' => 'Menus, categories and modifiers',
             'plans' => ['starter', 'growth', 'enterprise'],
-            'live' => false,
+            'live' => true,
+        ],
+        'set_meals' => [
+            'label' => 'Set meals',
+            'plans' => ['starter', 'growth', 'enterprise'],
+            'live' => true,
         ],
         'daily_sales_summary' => [
             'label' => 'Daily sales summary',
@@ -94,8 +99,13 @@ return [
             'plans' => ['growth', 'enterprise'],
             'live' => false,
         ],
-        'branch_pricing_and_reports' => [
-            'label' => 'Per-branch pricing and reports',
+        'branch_pricing' => [
+            'label' => 'Per-branch prices',
+            'plans' => ['growth', 'enterprise'],
+            'live' => true,
+        ],
+        'branch_reports' => [
+            'label' => 'Per-branch reports',
             'plans' => ['growth', 'enterprise'],
             'live' => false,
         ],

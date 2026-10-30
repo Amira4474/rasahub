@@ -49,6 +49,12 @@ enum Permission: string
     case UpdateUsers = 'users.update';
     case DeleteUsers = 'users.delete';
 
+    // The menu: categories, products, modifier groups and set meals.
+    case ViewCatalogue = 'catalogue.view';
+    case ManageCatalogue = 'catalogue.manage';
+    // Whether a product is available at a branch the user works in.
+    case SetProductAvailability = 'catalogue.availability';
+
     public function isPlatform(): bool
     {
         return in_array($this, [
