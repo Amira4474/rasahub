@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'marketing.home')->name('home');
 
+// Business settings became Restaurant settings in v0.2.0.
+Route::redirect('/admin/business-settings', '/admin/restaurant-settings', 301);
+
 /*
 | There are three separate ways in, each with its own sign-in page:
 |   /platform  platform users        (Filament panel)

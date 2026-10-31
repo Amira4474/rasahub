@@ -90,9 +90,9 @@ return [
             'live' => false,
         ],
         'table_management' => [
-            'label' => 'Table management',
-            'plans' => ['growth', 'enterprise'],
-            'live' => false,
+            'label' => 'Tables and floor plans',
+            'plans' => ['starter', 'growth', 'enterprise'],
+            'live' => true,
         ],
         'qr_ordering' => [
             'label' => 'QR ordering',

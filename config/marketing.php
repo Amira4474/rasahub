@@ -124,6 +124,7 @@ return [
                 '1 branch, 2 terminals',
                 'Up to 5 staff accounts',
                 'POS for dine-in and takeaway',
+                'Tables and floor plans',
                 'Menus, categories and modifiers',
                 'Daily sales summary',
                 'Email support',
@@ -139,7 +140,7 @@ return [
             'includes' => [
                 'Up to 5 branches, unlimited terminals',
                 'Unlimited staff and custom roles',
-                'Kitchen display and table management',
+                'Kitchen display',
                 'QR ordering',
                 'Per-branch pricing and reports',
                 'Priority support',

@@ -55,6 +55,10 @@ enum Permission: string
     // Whether a product is available at a branch the user works in.
     case SetProductAvailability = 'catalogue.availability';
 
+    // Floor areas and their tables.
+    case ViewTables = 'tables.view';
+    case ManageTables = 'tables.manage';
+
     public function isPlatform(): bool
     {
         return in_array($this, [

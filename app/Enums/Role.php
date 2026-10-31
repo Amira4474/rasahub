@@ -96,6 +96,8 @@ enum Role: string
                 Permission::ViewCatalogue,
                 Permission::ManageCatalogue,
                 Permission::SetProductAvailability,
+                Permission::ViewTables,
+                Permission::ManageTables,
             ],
             self::Manager => [
                 Permission::AccessAdminPanel,
@@ -109,6 +111,8 @@ enum Role: string
                 Permission::ViewCatalogue,
                 Permission::ManageCatalogue,
                 Permission::SetProductAvailability,
+                Permission::ViewTables,
+                Permission::ManageTables,
             ],
             self::Supervisor => [
                 Permission::AccessAdminPanel,
@@ -117,6 +121,7 @@ enum Role: string
                 Permission::ViewTerminals,
                 Permission::ViewCatalogue,
                 Permission::SetProductAvailability,
+                Permission::ViewTables,
             ],
             self::Cashier, self::Waiter => [
                 Permission::AccessPos,

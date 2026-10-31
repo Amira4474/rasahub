@@ -6,6 +6,65 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.2.0 (2026-10-31)
+
+Restaurant Settings with SST, rounding and receipts; branch service charge
+and business day; floor plans and tables. A faster test suite.
+
+### Added
+
+- **Restaurant settings** page in the tenant admin, replacing Business
+  settings (the old address redirects). Sections:
+  - **Business details**: name, acronym (read-only), currency, timezone.
+  - **Tax and charges**: charge SST (on), SST rate (6%), menu prices
+    include SST (on), SST registration number, round bill totals to the
+    nearest 5 sen for every payment method (on). A worked example shows how
+    SST is counted at the chosen rate.
+  - **Receipts**: logo, header text and footer text.
+- **New tenants start with SST on at 6%, prices including SST, and
+  rounding on.**
+- **SST number reminder**: while SST is charged but no registration number
+  is entered, the Owner sees a reminder on the dashboard and on the settings
+  page.
+- **Per-branch settings** on the branch form: address and phone for
+  receipts, service charge (0 for none, dine-in only by default), and the
+  time the business day starts (default 04:00). A sale at 01:30 counts
+  towards the previous day.
+- **Floor plans**, on every plan: floor areas per branch, such as
+  Indoor or Patio, each with tables (name, seats, shape). A floor plan page
+  shows the tables as they stand in the room; managers drag them into place
+  and save. Each user only sees the areas of their branches. Table status
+  (occupied, bill requested) arrives with orders in v0.3.0.
+- **Permissions** `tables.view` (Owner, Manager, Supervisor) and
+  `tables.manage` (Owner, Manager).
+- **SST arithmetic** (`App\Support\Sst`) on decimal strings, ready for
+  the sales core.
+
+### Changed
+
+- **Plans page**: "Table management" becomes "Tables and floor plans", is
+  included in every plan including Starter, and is marked as built. The
+  website's Growth plan now lists "Kitchen display" on its own.
+- **Tenant admin navigation**: Restaurant settings, Branches, Floor plans,
+  POS terminals, Staff, then the Menu group.
+- **The test suite runs in about 5 minutes instead of 11.** The first test
+  tenant database is built by its migrations; later ones are created from a
+  copy of its table definitions (`App\Tenancy\TenantSchemaCopy`, switched
+  on only by `TENANT_SCHEMA_COPY` in `phpunit.xml`). Real tenants are always
+  built by their migrations.
+
+### Database
+
+- Tenant migrations `2026_10_31_100000` to `2026_10_31_100002` add
+  `restaurant_settings`, add receipt, service charge and business day
+  columns to `branches`, and add `floor_areas` and `dining_tables`.
+
+### Upgrading
+
+1. Sync roles and permissions: `php artisan db:seed`.
+2. Migrate every tenant: `php artisan tenants:migrate`, or Platform →
+   Migrations → Migrate all tenants.
+
 ## v0.1.0 (2026-10-30)
 
 The menu: categories, products, modifier groups and set meals, the first

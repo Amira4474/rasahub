@@ -91,9 +91,9 @@ There is one global set, defined in `app/Enums/Role.php` and
 
 | Business role | Can |
 |---|---|
-| Owner | Everything in the business: settings, branches, terminals, staff and the menu, at every branch |
-| Manager | View the business, branches and staff; manage terminals and the menu; set availability at their branches |
-| Supervisor | View their branches, terminals and the menu; mark products sold out at their branches |
+| Owner | Everything in the business: settings, branches, floor plans, terminals, staff and the menu, at every branch |
+| Manager | View the business, branches and staff; manage terminals, floor plans and the menu; set availability at their branches |
+| Supervisor | View their branches, floor plans, terminals and the menu; mark products sold out at their branches |
 | Cashier, Waiter | The POS only |
 | Inventory | View the menu |
 | Kitchen | Nothing yet (the kitchen display arrives in v0.5.0) |

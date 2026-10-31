@@ -148,11 +148,50 @@ class TenantDatabase
         ));
 
         try {
-            $this->migrate($business);
+            $this->build($business);
         } catch (Throwable $exception) {
             $this->drop($business);
 
             throw $exception;
+        }
+    }
+
+    /**
+     * Build the tables of a new, empty tenant database: by running the
+     * tenant migrations, or in the test suite from a copy of a database the
+     * migrations built earlier (see TenantSchemaCopy).
+     */
+    private function build(Business|int $business): void
+    {
+        if (! TenantSchemaCopy::enabled()) {
+            $this->migrate($business);
+
+            return;
+        }
+
+        $restored = $this->onTenant($business, fn (Connection $tenant): bool => TenantSchemaCopy::restore($tenant));
+
+        if (! $restored) {
+            $this->migrate($business);
+
+            $this->onTenant($business, fn (Connection $tenant) => TenantSchemaCopy::keep($tenant));
+        }
+    }
+
+    /**
+     * @template TReturn
+     *
+     * @param  Closure(Connection): TReturn  $callback
+     * @return TReturn
+     */
+    private function onTenant(Business|int $business, Closure $callback): mixed
+    {
+        $this->connect($business instanceof Business ? $business->getKey() : $business);
+
+        try {
+            return $callback(DB::connection(self::CONNECTION));
+        } finally {
+            $this->release();
         }
     }
 

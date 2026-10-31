@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\Permission;
 use App\Tenancy\TenantContext;
 use App\Tenancy\UsesTenantDatabase;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -15,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'code', 'timezone', 'is_active'])]
+#[Fillable(['name', 'code', 'timezone', 'address', 'phone', 'service_charge_rate', 'service_charge_dine_in_only', 'business_day_starts_at', 'is_active'])]
 /**
  * A branch is tenant data: it lives in its business's own database, so it
  * carries no business_id.
@@ -32,6 +34,9 @@ class Branch extends Model
      */
     protected $attributes = [
         'is_active' => true,
+        'service_charge_rate' => '0.00',
+        'service_charge_dine_in_only' => true,
+        'business_day_starts_at' => '04:00:00',
     ];
 
     /**
@@ -50,6 +55,43 @@ class Branch extends Model
     public function terminals(): HasMany
     {
         return $this->hasMany(Terminal::class);
+    }
+
+    /**
+     * @return HasMany<FloorArea, $this>
+     */
+    public function floorAreas(): HasMany
+    {
+        return $this->hasMany(FloorArea::class)->orderBy('sort_order');
+    }
+
+    /**
+     * The branch's own timezone, or the business's.
+     */
+    public function effectiveTimezone(): string
+    {
+        return $this->timezone ?? app(TenantContext::class)->business()?->timezone ?? config('app.timezone');
+    }
+
+    /**
+     * The business day a moment belongs to. The day starts at the branch's
+     * cut-off time, so with the default of 04:00 a sale at 01:30 on Saturday
+     * belongs to Friday.
+     */
+    public function businessDateFor(CarbonInterface $moment): CarbonImmutable
+    {
+        [$hours, $minutes] = array_map('intval', explode(':', (string) $this->business_day_starts_at));
+
+        return CarbonImmutable::instance($moment)
+            ->setTimezone($this->effectiveTimezone())
+            ->subHours($hours)
+            ->subMinutes($minutes)
+            ->startOfDay();
+    }
+
+    public function chargesServiceCharge(): bool
+    {
+        return (float) $this->service_charge_rate > 0;
     }
 
     /**
@@ -90,6 +132,8 @@ class Branch extends Model
     {
         return [
             'is_active' => 'boolean',
+            'service_charge_rate' => 'decimal:2',
+            'service_charge_dine_in_only' => 'boolean',
         ];
     }
 }

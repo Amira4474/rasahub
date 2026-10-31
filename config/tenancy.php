@@ -42,6 +42,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Schema copy (tests only)
+    |--------------------------------------------------------------------------
+    |
+    | When on, a new tenant database is built from a copy of the first one
+    | the migrations built in the same process, which is several times
+    | faster. Only phpunit.xml turns it on; see App\Tenancy\TenantSchemaCopy.
+    |
+    */
+
+    'schema_copy' => (bool) env('TENANT_SCHEMA_COPY', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Registration defaults
     |--------------------------------------------------------------------------
     |

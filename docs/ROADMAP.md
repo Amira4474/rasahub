@@ -28,7 +28,7 @@ and the version in [`VERSION.md`](../VERSION.md).
 | Release | Module |
 |---|---|
 | v0.1.0 | Catalogue: categories, products, modifier groups, set meals (done) |
-| v0.2.0 | Restaurant Settings (tax, rounding, cut-off, SST number), tables and floor plan |
+| v0.2.0 | Restaurant Settings (tax, rounding, cut-off, SST number), tables and floor plan (done) |
 | v0.3.0 | Sales core: shifts, orders, payments, receipts, customers |
 | v0.4.0 | Discounts, voids, cancellations, refunds |
 | v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway |
@@ -68,7 +68,7 @@ to the bar and the food to the kitchen.
 **Permissions.** View catalogue; manage catalogue; set availability per
 branch.
 
-## v0.2.0 Restaurant Settings and tables
+## v0.2.0 Restaurant Settings and tables (done)
 
 **Restaurant Settings** replaces Business settings in the tenant admin:
 
@@ -76,8 +76,8 @@ branch.
 |---|---|
 | Business details | Name, acronym (read-only), currency, timezone |
 | Tax and charges | Charge SST (on), SST rate (6%), prices include SST (yes), SST registration number, round totals to 5 sen (on) |
-| Per branch | Service charge (off), business day starts at (04:00) |
-| Receipts | Logo, address, footer text |
+| Per branch (on the branch form) | Address and phone, service charge (off), business day starts at (04:00) |
+| Receipts | Logo, header text, footer text |
 
 Only the Owner changes them. A reminder shows while SST is on but no SST
 registration number is filled in.
@@ -90,7 +90,7 @@ charge too. Receipts show "SST 6% (included)".
 **Tables.** Floor areas per branch (Indoor, Patio), each with tables: name,
 seats, shape and position on a floor plan. A table's status comes from its
 orders: available, occupied, bill requested. Orders can move between tables
-and tables can be merged. Growth and above.
+and tables can be merged. On every plan, Starter included.
 
 ## v0.3.0 Sales core
 

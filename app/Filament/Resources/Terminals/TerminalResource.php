@@ -24,7 +24,7 @@ class TerminalResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $recordTitleAttribute = 'name';
 
