@@ -6,6 +6,17 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## Unreleased
+
+### Changed
+
+- **The two sign-in pages look different.** The tenant admin's says
+  **Business Admin** under an amber banner; the platform's says **Platform
+  Console**, "For RasaHub staff only", under an indigo banner on a dark page.
+- **The wrong sign-in page says so.** A correct password on the wrong page
+  now shows which page to use, with a button to it, instead of "credentials
+  do not match". A wrong password still reveals nothing.
+
 ## v0.7.0 (2026-11-04)
 
 QR ordering: customers order from their phones at the table, on a page the

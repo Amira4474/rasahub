@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Platform\Auth\Login;
 use App\Http\Middleware\LeavePlatformWhileSuperImposing;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -31,7 +32,7 @@ class PlatformPanelProvider extends PanelProvider
         return $panel
             ->id('platform')
             ->path('platform')
-            ->login()
+            ->login(Login::class)
             ->brandName('RasaHub Platform')
             ->colors([
                 'primary' => Color::Indigo,
@@ -39,6 +40,10 @@ class PlatformPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::STYLES_AFTER,
                 fn (): View => view('filament.hidden-scrollbars'),
+            )
+            ->renderHook(
+                PanelsRenderHook::SIMPLE_LAYOUT_START,
+                fn (): View => view('filament.sign-in-banner', ['area' => 'Platform Console', 'note' => 'RasaHub staff only', 'background' => '#4338ca', 'tintPage' => true]),
             )
             ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,

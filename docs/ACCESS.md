@@ -49,8 +49,16 @@ globally unique identifier is needed.
 
 ## Three ways in
 
-Each has its own sign-in page. A correct password at the wrong door gets the
-same "credentials do not match" message as a wrong password.
+Each has its own sign-in page, and the two Filament pages cannot be mistaken
+for each other: the tenant admin's has an amber "Business Admin" banner, the
+platform's an indigo "Platform Console" banner on a dark page.
+
+A correct password at the wrong door is told which door is its own, with a
+button to it: a platform user at the tenant admin is sent to the platform
+sign-in, and restaurant staff at the platform to the tenant admin or, if
+they only use the POS, the POS sign-in. This comes only after the password
+has been checked, so a wrong password still gets the same "credentials do
+not match" message and reveals nothing.
 
 | Door | Sign-in page | For | Built with |
 |---|---|---|---|

@@ -49,6 +49,10 @@ class AdminPanelProvider extends PanelProvider
                 fn (): View => view('filament.hidden-scrollbars'),
             )
             ->renderHook(
+                PanelsRenderHook::SIMPLE_LAYOUT_START,
+                fn (): View => view('filament.sign-in-banner', ['area' => 'Business Admin', 'note' => 'for restaurant owners and managers', 'background' => '#b45309']),
+            )
+            ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
                 fn (): View => view('filament.back-to-website'),
             )
