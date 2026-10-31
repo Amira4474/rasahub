@@ -143,11 +143,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * The POS is for tenant staff only. Platform users never enter it.
+     * The POS is for tenant staff. A platform user only ever enters it
+     * through Super Impose.
      */
     public function canAccessPos(): bool
     {
-        return $this->holdsPosAccess() && $this->businessAccessProblem() === null;
+        return $this->isPlatformUser()
+            ? $this->is_active && app(SuperImpose::class)->businessIdFor($this) !== null
+            : $this->holdsPosAccess() && $this->businessAccessProblem() === null;
     }
 
     /**

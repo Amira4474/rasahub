@@ -17,7 +17,7 @@ class ViewTenant extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            SuperImposeAction::make(),
+            SuperImposeAction::group(),
             EditAction::make(),
         ];
     }

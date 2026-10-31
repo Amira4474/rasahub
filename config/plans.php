@@ -57,7 +57,12 @@ return [
         'pos' => [
             'label' => 'POS for dine-in and takeaway',
             'plans' => ['starter', 'growth', 'enterprise'],
-            'live' => false,
+            'live' => true,
+        ],
+        'customers' => [
+            'label' => 'Customers and order history',
+            'plans' => ['starter', 'growth', 'enterprise'],
+            'live' => true,
         ],
         'menus' => [
             'label' => 'Menus, categories and modifiers',
@@ -87,7 +92,7 @@ return [
         'kitchen_display' => [
             'label' => 'Kitchen display',
             'plans' => ['growth', 'enterprise'],
-            'live' => false,
+            'live' => true,
         ],
         'table_management' => [
             'label' => 'Tables and floor plans',

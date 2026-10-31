@@ -59,6 +59,16 @@ enum Permission: string
     case ViewTables = 'tables.view';
     case ManageTables = 'tables.manage';
 
+    // Sales.
+    case TakeOrders = 'orders.take';
+    case TakePayments = 'payments.take';
+    case ManageShifts = 'shifts.manage';
+    case ViewOrders = 'orders.view';
+    case ViewCustomers = 'customers.view';
+    case ManageCustomers = 'customers.manage';
+    // Move orders along in the kitchen: preparing, ready, served.
+    case UseKitchenDisplay = 'kitchen.use';
+
     public function isPlatform(): bool
     {
         return in_array($this, [

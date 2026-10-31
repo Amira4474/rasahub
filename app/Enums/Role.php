@@ -98,6 +98,13 @@ enum Role: string
                 Permission::SetProductAvailability,
                 Permission::ViewTables,
                 Permission::ManageTables,
+                Permission::TakeOrders,
+                Permission::TakePayments,
+                Permission::ManageShifts,
+                Permission::ViewOrders,
+                Permission::ViewCustomers,
+                Permission::ManageCustomers,
+                Permission::UseKitchenDisplay,
             ],
             self::Manager => [
                 Permission::AccessAdminPanel,
@@ -113,6 +120,13 @@ enum Role: string
                 Permission::SetProductAvailability,
                 Permission::ViewTables,
                 Permission::ManageTables,
+                Permission::TakeOrders,
+                Permission::TakePayments,
+                Permission::ManageShifts,
+                Permission::ViewOrders,
+                Permission::ViewCustomers,
+                Permission::ManageCustomers,
+                Permission::UseKitchenDisplay,
             ],
             self::Supervisor => [
                 Permission::AccessAdminPanel,
@@ -122,9 +136,29 @@ enum Role: string
                 Permission::ViewCatalogue,
                 Permission::SetProductAvailability,
                 Permission::ViewTables,
+                Permission::TakeOrders,
+                Permission::TakePayments,
+                Permission::ManageShifts,
+                Permission::ViewOrders,
+                Permission::ViewCustomers,
+                Permission::UseKitchenDisplay,
             ],
-            self::Cashier, self::Waiter => [
+            self::Cashier => [
                 Permission::AccessPos,
+                Permission::TakeOrders,
+                Permission::TakePayments,
+                Permission::ManageShifts,
+                Permission::UseKitchenDisplay,
+            ],
+            self::Waiter => [
+                Permission::AccessPos,
+                Permission::TakeOrders,
+                Permission::UseKitchenDisplay,
+            ],
+            // Kitchen staff sign in to the POS for the kitchen display only.
+            self::Kitchen => [
+                Permission::AccessPos,
+                Permission::UseKitchenDisplay,
             ],
             self::Inventory => [
                 Permission::AccessAdminPanel,

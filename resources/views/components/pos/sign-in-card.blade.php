@@ -5,7 +5,7 @@
     <p class="mt-2 text-sm font-semibold uppercase tracking-[0.2em] text-saffron-400">Staff POS</p>
 
     <div class="mt-8 w-full max-w-md rounded-3xl bg-cream-50 p-8 shadow-2xl sm:p-10">
-        <p class="text-sm font-semibold text-chili-500">Step {{ $step }} of 2</p>
+        <p class="text-sm font-semibold text-chili-500">Step {{ $step }} of 3</p>
         <h1 class="mt-1 font-display text-3xl font-extrabold tracking-tight text-ink-900">{{ $heading }}</h1>
 
         {{ $slot }}

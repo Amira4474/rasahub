@@ -6,6 +6,103 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.3.0 (2026-11-01)
+
+The sales core: RasaHub takes orders and payments.
+
+### Added
+
+- **POS screen** (Livewire), replacing the placeholder page:
+  - **Tables** tab: the branch's floor plans, each table green when free,
+    red when occupied and amber when partly paid. Tapping a free table
+    starts a dine-in order with its number of guests; tapping an occupied
+    one opens its order.
+  - **Menu** tab: category tabs and product buttons in each category's
+    colour, with branch prices, and sold-out or inactive items left out.
+    Products with modifiers open a picker that enforces "Choose 1" and "Up
+    to 3"; set meals open a picker for each choice. A kitchen note and a
+    quantity can be added.
+  - **Open orders** tab, to pick up any open order at the branch.
+  - **The order panel**: lines with their modifiers, set meal parts and
+    notes; quantity and removal until a line is sent; customer; subtotal,
+    service charge, SST, rounding, total, payments and balance.
+  - **Send to kitchen**, **move or merge table**, and **add customer** by
+    phone number with an optional name.
+  - **Payment** by any of the restaurant's methods, split across several if
+    wanted. Cash shows quick note buttons and the change. A QR method shows
+    the restaurant's QR code on screen for the customer to scan. Paying in
+    full completes the order and opens the receipt.
+  - **Shifts**: one shift button in the header opens a pop-up. With a
+    shift open it shows who opened it and when, the opening float, the cash
+    that should be in the drawer now, what was taken by each payment method,
+    the orders paid and the open orders still unpaid, with **Close shift**
+    (asks for the cash count and reports whether the drawer is exact, over
+    or short) and **Switch terminal**. With no shift, it asks for the float.
+  - **Fits the window**: the menu, tables and order panel are all on one
+    screen without scrolling the page; each panel scrolls on its own.
+  - **Product photos** on the menu buttons, or the category colour and the
+    product's initial when there is no photo.
+  - **Header menu** with three sections: **Sell**, **Transactions** and
+    **Kitchen display**, and a running clock in the branch's time.
+  - **Transactions**: the branch's orders on any business day, with a
+    search by order number, customer name or phone, the day's paid total,
+    and each order opening in the order panel with its receipt.
+  - **Kitchen display** (Growth and Enterprise): orders in the kitchen in
+    three columns, New, Preparing and Ready, each moved on with one tap
+    until served. It refreshes every 5 seconds. Kitchen staff sign in to
+    the POS and start here; they take no orders.
+  - **Alerts** in the centre of the screen with an icon, naming the order.
+    Good news closes by itself after a few seconds; problems wait for OK.
+- **Terminal choice** as the third step of the POS sign-in, at every
+  sign-in, with "Switch terminal" on the screen.
+- **Orders** with a number per branch that restarts each business day and
+  includes the branch code (BGR-0042), dated by the branch's cut-off time.
+  Order status and payment status are kept apart. Every order keeps the tax
+  settings, names and prices it was sold under.
+- **Totals**: SST on the whole bill (included in or added to prices), the
+  branch's service charge on the amount before SST with SST on it too, and
+  rounding of the total to 5 sen for every payment method.
+- **Receipts** laid out for 80 mm thermal printers and printed through the
+  browser: logo, header, branch address and phone, SST number, items,
+  totals, payments, change and footer. A receipt number per branch
+  (BGR-R000001). Reprinted from the POS or from the order in the admin.
+- **Admin → Sales**: Orders (filters by branch, status, type and business
+  day; order detail; print receipt), Shifts (float, expected, counted and
+  difference), Customers (visits, total spent, last visit, marketing
+  consent with the date given, order history) and Payment methods
+  (defaults Cash, Card, QR payment and Other; upload a QR code image; ask
+  for a reference; reorder).
+- **Super Impose into the POS.** On the platform's tenant list and tenant
+  page, "Super Impose" now offers **Tenant admin** or **POS**. The POS way
+  asks for a terminal and opens the tenant's POS screen with the red banner
+  and an "Exit Super Impose" button; each banner links to the other side.
+  The audit log records which way was used.
+- **Exit Super Impose returns to the tenant's page** in the platform panel,
+  instead of the platform dashboard.
+- **Permissions** `orders.take`, `payments.take`, `shifts.manage`,
+  `orders.view`, `customers.view` and `customers.manage`. Cashiers open
+  shifts and take orders and payments; Waiters take orders only.
+- **Payments and orders are safe to retry**: each payment carries a key,
+  so a double tap records it once, and the order is locked while a payment
+  is taken.
+
+### Changed
+
+- **Plans page**: "POS for dine-in and takeaway" and the new "Customers
+  and order history" are marked as built.
+
+### Database
+
+- Tenant migrations `2026_11_01_100000` to `2026_11_01_100002` add
+  `payment_methods`, `customers`, `shifts`, `sequences`, `orders`,
+  `order_items`, `order_item_modifiers` and `payments`.
+
+### Upgrading
+
+1. Sync roles and permissions: `php artisan db:seed`.
+2. Migrate every tenant: `php artisan tenants:migrate`, or Platform →
+   Migrations → Migrate all tenants.
+
 ## v0.2.0 (2026-10-31)
 
 Restaurant Settings with SST, rounding and receipts; branch service charge

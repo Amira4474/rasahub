@@ -7,6 +7,7 @@ use App\Enums\AuditEvent;
 use App\Enums\Permission;
 use App\Models\Business;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -23,10 +24,15 @@ class SuperImpose
 {
     private const SESSION_KEY = 'super_impose';
 
+    // Where the platform user went in: the tenant's admin pages or its POS.
+    public const INTO_ADMIN = 'admin';
+
+    public const INTO_POS = 'pos';
+
     /**
      * @throws AuthorizationException
      */
-    public function start(Business $business, ?string $reason = null): void
+    public function start(Business $business, ?string $reason = null, string $into = self::INTO_ADMIN): void
     {
         $user = Auth::user();
 
@@ -40,15 +46,29 @@ class SuperImpose
 
         $this->exit();
 
+        $into = $into === self::INTO_POS ? self::INTO_POS : self::INTO_ADMIN;
+
         Session::put(self::SESSION_KEY, [
             'business_id' => $business->getKey(),
+            'into' => $into,
             'started_at' => now()->toIso8601String(),
         ]);
 
         // The business being acted in has just changed.
         app(TenantDatabase::class)->release();
 
-        app(Audit::class)->record(AuditEvent::SuperImposeStarted, $business, array_filter(['reason' => $reason]));
+        app(Audit::class)->record(AuditEvent::SuperImposeStarted, $business, array_filter(['into' => $into, 'reason' => $reason]));
+    }
+
+    /**
+     * Where the platform user went in, and is sent back to while Super
+     * Impose lasts.
+     */
+    public function entryUrl(): string
+    {
+        return Session::get(self::SESSION_KEY.'.into') === self::INTO_POS
+            ? route('pos.terminal')
+            : Filament::getPanel('admin')->getUrl();
     }
 
     public function exit(): void

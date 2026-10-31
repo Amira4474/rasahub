@@ -1,4 +1,4 @@
-@props(['title'])
+@props(['title', 'fit' => false])
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -12,13 +12,17 @@
         @fonts
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="flex min-h-screen flex-col bg-ink-900 font-sans text-ink-800 antialiased">
-        <div class="flex flex-1 flex-col">
+    {{-- "fit" keeps everything inside the window, as on the POS screen:
+         the panels scroll on their own and the page never does. --}}
+    <body @class(['flex flex-col bg-ink-900 font-sans text-ink-800 antialiased', 'h-dvh overflow-hidden' => $fit, 'min-h-screen' => ! $fit])>
+        <x-pos.super-impose-banner />
+
+        <div class="flex min-h-0 flex-1 flex-col">
             {{ $slot }}
         </div>
 
         <footer class="border-t border-white/10">
-            <div class="mx-auto flex max-w-5xl flex-wrap justify-between gap-x-6 gap-y-1 px-4 py-4 text-xs text-cream-200/60 sm:px-6">
+            <div @class(['mx-auto flex flex-wrap justify-between gap-x-6 gap-y-1 px-4 text-xs text-cream-200/60 sm:px-6', 'py-1.5' => $fit, 'max-w-5xl py-4' => ! $fit])>
                 <span>&copy; {{ now()->year }} {{ config('app.name') }}. All rights reserved.</span>
                 <span>Point of Sale &middot; {{ config('app.version') }}</span>
             </div>

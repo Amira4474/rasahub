@@ -29,7 +29,7 @@ and the version in [`VERSION.md`](../VERSION.md).
 |---|---|
 | v0.1.0 | Catalogue: categories, products, modifier groups, set meals (done) |
 | v0.2.0 | Restaurant Settings (tax, rounding, cut-off, SST number), tables and floor plan (done) |
-| v0.3.0 | Sales core: shifts, orders, payments, receipts, customers |
+| v0.3.0 | Sales core: shifts, orders, payments, receipts, customers (done) |
 | v0.4.0 | Discounts, voids, cancellations, refunds |
 | v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway |
 | v0.6.0 | Reporting |
@@ -92,7 +92,19 @@ seats, shape and position on a floor plan. A table's status comes from its
 orders: available, occupied, bill requested. Orders can move between tables
 and tables can be merged. On every plan, Starter included.
 
-## v0.3.0 Sales core
+## v0.3.0 Sales core (done)
+
+Decided on 2026-10-31:
+
+- **Terminal:** staff choose the terminal at every POS sign-in.
+- **Payment methods:** each restaurant edits its own list (defaults: Cash,
+  Card, QR payment, Other). A QR payment method has an uploaded QR code
+  image, which the POS shows on screen when the cashier chooses it.
+- **Order numbers** include the branch code, such as BGR-0042, restarting
+  each business day.
+- **Payment** is taken by Cashiers and above; Waiters take orders only.
+- **Customers** are added at the POS with a phone number and an optional
+  name; the rest is filled in later in the admin.
 
 **Shifts.** A terminal opens a shift with a cash float before taking
 payments, and closes it with a cash count. Expected cash, counted cash and
@@ -145,7 +157,9 @@ and Alpine, which the project already has.
 **Stations** (Kitchen, Bar, Dessert). Categories send their products to a
 station, and a product can override it.
 
-**Kitchen display.** Screens per branch, each showing chosen stations. Items
+**Kitchen display.** A first version is in the POS since v0.3.0: every
+order in the kitchen in New, Preparing and Ready columns. v0.5.0 adds
+screens per branch, each showing chosen stations. Items
 move from new to preparing, ready and served, and the POS sees when an order
 is ready. Screens refresh every few seconds; no new server software is
 needed. Growth and above.

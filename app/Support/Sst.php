@@ -14,7 +14,7 @@ class Sst
      */
     public static function includedIn(string $price, string $rate): string
     {
-        return self::round(bcdiv(bcmul($price, $rate, 6), bcadd('100', $rate, 6), 6));
+        return Money::round(bcdiv(bcmul($price, $rate, 6), bcadd('100', $rate, 6), 6));
     }
 
     /**
@@ -22,7 +22,7 @@ class Sst
      */
     public static function addedTo(string $price, string $rate): string
     {
-        return self::round(bcdiv(bcmul($price, $rate, 6), '100', 6));
+        return Money::percentOf($price, $rate);
     }
 
     /**
@@ -40,13 +40,5 @@ class Sst
         }
 
         return "Example: a menu price of {$currency} 10.00 has {$currency} ".self::addedTo('10.00', $rate)." SST added at the till, making {$currency} ".bcadd('10.00', self::addedTo('10.00', $rate), 2).'.';
-    }
-
-    /**
-     * Round half up to the sen.
-     */
-    private static function round(string $amount): string
-    {
-        return bcadd($amount, '0.005', 2);
     }
 }

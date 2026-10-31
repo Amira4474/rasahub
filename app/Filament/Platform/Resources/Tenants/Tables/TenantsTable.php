@@ -55,7 +55,7 @@ class TenantsTable
             ])
             ->recordActions([
                 ViewAction::make(),
-                SuperImposeAction::make(),
+                SuperImposeAction::group(),
                 EditAction::make(),
             ]);
     }

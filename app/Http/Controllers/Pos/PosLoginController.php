@@ -106,13 +106,15 @@ class PosLoginController extends Controller
         $request->session()->regenerate();
         $request->session()->forget(self::SESSION_KEY);
 
-        return redirect()->intended(route('pos.home'));
+        // The terminal is chosen at every sign-in.
+        return redirect()->route('pos.terminal');
     }
 
     public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
 
+        // Invalidating the session also forgets the terminal.
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

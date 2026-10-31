@@ -6,6 +6,7 @@ use App\Audit\Audit;
 use App\Auth\SignInUserProvider;
 use App\Enums\AuditEvent;
 use App\Enums\Permission;
+use App\Http\Middleware\EnsurePosAccess;
 use App\Models\User;
 use App\Tenancy\SuperImpose;
 use App\Tenancy\TenantContext;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
         $this->pointTheTenantConnectionAtTheCurrentBusiness();
         $this->keepPlatformAndTenantPermissionsApart();
         $this->auditSignInAndSignOut();
+
+        // The POS screen's actions arrive as Livewire requests. They pass the
+        // same check as the page, so a tenant suspended mid-shift, or staff
+        // who lost POS access, are stopped there too.
+        Livewire::addPersistentMiddleware([EnsurePosAccess::class]);
     }
 
     /**

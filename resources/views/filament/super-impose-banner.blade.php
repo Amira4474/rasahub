@@ -34,6 +34,8 @@
             as {{ auth()->user()->name }}
         </span>
 
+        <a href="{{ route('pos.terminal') }}" style="flex-shrink: 0; padding: 0.3rem 0.9rem; border-radius: 9999px; border: 1px solid rgb(255 255 255 / 0.6); color: #fff; font-weight: 600;">Open POS</a>
+
         <form method="POST" action="{{ route('super-impose.exit') }}" style="flex-shrink: 0;">
             @csrf
             <button type="submit" style="padding: 0.3rem 0.9rem; border-radius: 9999px; background: #fff; color: #b91c1c; font-weight: 600; cursor: pointer;">

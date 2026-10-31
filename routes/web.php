@@ -3,8 +3,11 @@
 use App\Http\Controllers\ExitSuperImposeController;
 use App\Http\Controllers\Pos\PosHomeController;
 use App\Http\Controllers\Pos\PosLoginController;
+use App\Http\Controllers\Pos\PosReceiptController;
+use App\Http\Controllers\Pos\PosTerminalController;
 use App\Http\Controllers\Registration\TenantRegistrationController;
 use App\Http\Middleware\EnsurePosAccess;
+use App\Http\Middleware\EnsurePosTerminal;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'marketing.home')->name('home');
@@ -43,5 +46,14 @@ Route::prefix('pos')->name('pos.')->group(function () {
 
     Route::post('logout', [PosLoginController::class, 'logout'])->name('logout');
 
-    Route::get('/', PosHomeController::class)->middleware(EnsurePosAccess::class)->name('home');
+    // Printed from the POS, and from an order in the admin, including by a
+    // platform user in Super Impose. The controller checks who may see it.
+    Route::get('orders/{order}/receipt', PosReceiptController::class)->name('receipt');
+
+    Route::middleware(EnsurePosAccess::class)->group(function () {
+        Route::get('terminal', [PosTerminalController::class, 'show'])->name('terminal');
+        Route::post('terminal', [PosTerminalController::class, 'store'])->name('terminal.store');
+
+        Route::get('/', PosHomeController::class)->middleware(EnsurePosTerminal::class)->name('home');
+    });
 });

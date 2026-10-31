@@ -55,12 +55,16 @@ same "credentials do not match" message as a wrong password.
 | Door | Sign-in page | For | Built with |
 |---|---|---|---|
 | Platform | `/platform/login` | Platform users | Filament panel `platform` |
-| Tenant admin | `/admin/login` | Owner, Manager, Supervisor | Filament panel `admin` |
-| Staff POS | `/pos/login` | Owner, Manager, Supervisor, Cashier, Waiter | Blade pages |
+| Tenant admin | `/admin/login` | Owner, Manager, Supervisor, Inventory | Filament panel `admin` |
+| Staff POS | `/pos/login` | Owner, Manager, Supervisor, Cashier, Waiter | Blade pages and a Livewire screen |
 
-The POS sign-in has two steps: the company acronym (`businesses.acronym`),
-then email and password. The second step only accepts an active account that
-belongs to that company and holds `pos.access`.
+The POS sign-in has three steps: the company acronym (`businesses.acronym`),
+then email and password, then the terminal. The second step only accepts an
+active account that belongs to that company and holds `pos.access`. The third
+lists the active terminals of the branches the user works in, and is skipped
+when there is only one. It is asked at every sign-in, and again from "Switch
+terminal". The POS screen's own actions are Livewire requests, which pass the
+same access check as the page (`Livewire::addPersistentMiddleware`).
 
 Nobody in an inactive business can sign in anywhere, and neither can the
 staff of a business whose subscription is suspended or has ended (see
@@ -91,12 +95,13 @@ There is one global set, defined in `app/Enums/Role.php` and
 
 | Business role | Can |
 |---|---|
-| Owner | Everything in the business: settings, branches, floor plans, terminals, staff and the menu, at every branch |
-| Manager | View the business, branches and staff; manage terminals, floor plans and the menu; set availability at their branches |
-| Supervisor | View their branches, floor plans, terminals and the menu; mark products sold out at their branches |
-| Cashier, Waiter | The POS only |
+| Owner | Everything in the business: settings, payment methods, branches, floor plans, terminals, staff, the menu and sales, at every branch |
+| Manager | View the business, branches and staff; manage terminals, floor plans, the menu and customers; take orders and payments; at their branches |
+| Supervisor | View their branches, floor plans, terminals, the menu, orders, shifts and customers; mark products sold out; take orders and payments; at their branches |
+| Cashier | The POS: open and close shifts, take orders and payments, kitchen display |
+| Waiter | The POS: take orders (not payments), kitchen display |
 | Inventory | View the menu |
-| Kitchen | Nothing yet (the kitchen display arrives in v0.5.0) |
+| Kitchen | The POS kitchen display only: move orders from new to preparing, ready and served |
 
 Every permission check is answered in one place, the `Gate::before` rule in
 `AppServiceProvider`:
@@ -176,13 +181,16 @@ assignment table are both in the tenant's database. There is deliberately no
 
 ## Super Impose
 
-Lets a platform user work inside one tenant's admin pages with full access,
-without becoming a tenant user. `App\Tenancy\SuperImpose` holds it.
+Lets a platform user work inside one tenant with full access, without
+becoming a tenant user: in its admin pages or at its POS.
+`App\Tenancy\SuperImpose` holds it.
 
 ```
 Platform panel → Tenants → "Super Impose" on a tenant's row or page
-    → tenant admin pages, with a red banner naming the tenant
-    → "Exit Super Impose" → back to the platform panel
+    → "Tenant admin": the tenant's admin pages
+    → "POS": choose one of the tenant's terminals, then its POS screen
+    (either way with a red banner naming the tenant, and a link to the other)
+    → "Exit Super Impose" → back to that tenant's page in the platform panel
 ```
 
 What it does and does not do:
@@ -195,9 +203,12 @@ What it does and does not do:
   Scopes and policies keep every other tenant out of reach.
 - It has **no time limit**. It ends on "Exit Super Impose" or on sign-out.
 - It ends immediately if the user loses the `super-impose.start` permission.
-- While it is active the platform panel redirects to the tenant panel, so the
-  two contexts are never on screen together.
-- It gives access to the tenant admin pages only, not to the POS.
+- While it is active the platform panel redirects to where it was entered
+  (the tenant admin or the POS), so the two contexts are never on screen
+  together.
+- At the POS, orders and payments taken are real, and are recorded as taken
+  by the platform user. The audit log records which way they went in.
+- Without Super Impose a platform user never reaches the POS.
 - It works for a tenant whose subscription is suspended or has ended, so
   that the tenant can still be helped.
 - Only Platform Super Admin and Platform Admin may start it.
