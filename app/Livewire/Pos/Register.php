@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pos;
 
+use App\Enums\DiscountType;
 use App\Enums\KitchenStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
@@ -10,14 +11,17 @@ use App\Enums\Permission;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\DiningTable;
+use App\Models\DiscountPreset;
 use App\Models\FloorArea;
 use App\Models\Order;
+use App\Models\OrderDiscount;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Shift;
 use App\Models\Terminal;
 use App\Models\User;
+use App\Sales\ApprovalRequired;
 use App\Sales\SaleException;
 use App\Sales\Till;
 use App\Support\Money;
@@ -77,7 +81,9 @@ class Register extends Component
 
     public string $pickNote = '';
 
-    // Payment.
+    // Payment: the pop-up behind the Pay button, and the method chosen in it.
+    public bool $paying = false;
+
     public ?int $payingWithId = null;
 
     public string $payAmount = '';
@@ -95,6 +101,41 @@ class Register extends Component
 
     // Moving or merging.
     public bool $moving = false;
+
+    // Corrections: discounts, voids, cancelling and refunds. A dialog that
+    // needs a supervisor asks for their PIN in place.
+    /** null, 'order', or the id of the line being discounted */
+    public string|int|null $discounting = null;
+
+    public string $discountType = 'percent';
+
+    public string $discountValue = '';
+
+    public string $discountReason = '';
+
+    public ?int $voidingItemId = null;
+
+    public string $voidReason = '';
+
+    public bool $cancelling = false;
+
+    public string $cancelReason = '';
+
+    public bool $refunding = false;
+
+    /** items or amount */
+    public string $refundMode = 'items';
+
+    /** @var array<int, int> */
+    public array $refundQuantities = [];
+
+    public string $refundAmount = '';
+
+    public string $refundReason = '';
+
+    public bool $needsApproval = false;
+
+    public string $approvalPin = '';
 
     // Shift: the pop-up behind the shift button in the header, and its
     // closing step.
@@ -147,7 +188,7 @@ class Register extends Component
             return null;
         }
 
-        $order = Order::with(['lines.parts', 'lines.modifiers', 'payments', 'diningTable', 'customer', 'branch'])
+        $order = Order::with(['lines.parts', 'lines.modifiers', 'lines.discounts', 'discounts', 'payments', 'refunds', 'diningTable', 'customer', 'branch'])
             ->where('branch_id', $this->branch->id)
             ->find($this->orderId);
 
@@ -331,6 +372,15 @@ class Register extends Component
         ];
     }
 
+    /**
+     * @return Collection<int, DiscountPreset>
+     */
+    #[Computed]
+    public function presets(): Collection
+    {
+        return DiscountPreset::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
+    }
+
     public function kitchenIncluded(): bool
     {
         return app(TenantContext::class)->business()?->subscription?->plan->includes('kitchen_display') ?? false;
@@ -380,7 +430,7 @@ class Register extends Component
         }
 
         $this->screen = $screen;
-        $this->reset('pickingProductId', 'payingWithId', 'choosingCustomer', 'moving', 'seatingTableId');
+        $this->reset('pickingProductId', 'paying', 'payingWithId', 'choosingCustomer', 'moving', 'seatingTableId');
     }
 
     /**
@@ -510,7 +560,7 @@ class Register extends Component
 
     public function showOrder(int $orderId): void
     {
-        $this->reset('pickingProductId', 'payingWithId', 'choosingCustomer', 'moving', 'seatingTableId');
+        $this->reset('pickingProductId', 'paying', 'payingWithId', 'choosingCustomer', 'moving', 'seatingTableId');
         $this->orderId = $orderId;
         $this->screen = 'sell';
         $this->tab = 'menu';
@@ -519,7 +569,7 @@ class Register extends Component
 
     public function closeOrder(): void
     {
-        $this->reset('orderId', 'pickingProductId', 'payingWithId', 'choosingCustomer', 'moving');
+        $this->reset('orderId', 'pickingProductId', 'paying', 'payingWithId', 'choosingCustomer', 'moving');
         $this->tab = $this->tables()->isEmpty() ? 'menu' : 'tables';
     }
 
@@ -666,7 +716,191 @@ class Register extends Component
         });
     }
 
+    // Corrections -----------------------------------------------------------
+
+    public function openDiscount(string|int $target): void
+    {
+        $this->resetCorrections();
+        $this->discounting = $target === 'order' ? 'order' : (int) $target;
+    }
+
+    public function applyPreset(int $presetId): void
+    {
+        $preset = $this->presets->firstWhere('id', $presetId);
+
+        $this->attempt(function () use ($preset): void {
+            app(Till::class)->applyDiscount($this->order, $this->user(), $this->discountedLine(), $preset);
+            $this->say("{$preset->name} given on order {$this->order->number_label}.", 'success');
+            $this->resetCorrections();
+        });
+    }
+
+    public function applyManualDiscount(): void
+    {
+        $value = Money::parse($this->discountValue);
+
+        if ($value === null) {
+            $this->say('Enter the discount as a number, such as 10 or 5.50.', 'error');
+
+            return;
+        }
+
+        $this->attemptWithApproval(function () use ($value): void {
+            app(Till::class)->applyDiscount($this->order, $this->user(), $this->discountedLine(), null, DiscountType::from($this->discountType), $value, $this->discountReason, $this->approvalPin ?: null);
+            $this->say("Discount given on order {$this->order->number_label}.", 'success');
+            $this->resetCorrections();
+        });
+    }
+
+    public function removeDiscount(int $discountId): void
+    {
+        $discount = OrderDiscount::where('order_id', $this->orderId)->findOrFail($discountId);
+
+        $this->attempt(fn () => app(Till::class)->removeDiscount($discount, $this->user()));
+    }
+
+    public function openVoid(int $itemId): void
+    {
+        $this->resetCorrections();
+        $this->voidingItemId = $this->item($itemId)->id;
+    }
+
+    public function confirmVoid(): void
+    {
+        $item = $this->item($this->voidingItemId);
+
+        $this->attemptWithApproval(function () use ($item): void {
+            app(Till::class)->voidItem($item, $this->user(), $this->voidReason, $this->approvalPin ?: null);
+            $this->say("{$item->name} voided on order {$this->order->number_label}.", 'success');
+            $this->resetCorrections();
+        });
+    }
+
+    public function openCancel(): void
+    {
+        $this->resetCorrections();
+        $this->cancelling = true;
+    }
+
+    public function confirmCancel(): void
+    {
+        $this->attemptWithApproval(function (): void {
+            $label = $this->order->number_label;
+
+            app(Till::class)->cancelOrder($this->order, $this->user(), $this->cancelReason, $this->approvalPin ?: null);
+            $this->resetCorrections();
+            $this->say("Order {$label} cancelled.", 'success');
+        });
+    }
+
+    public function openRefund(): void
+    {
+        $this->resetCorrections();
+        $this->refunding = true;
+        $this->refundQuantities = $this->order->lines
+            ->reject(fn (OrderItem $line): bool => $line->isVoided())
+            ->mapWithKeys(fn (OrderItem $line): array => [$line->id => 0])
+            ->all();
+    }
+
+    public function changeRefundQuantity(int $lineId, int $by): void
+    {
+        $line = $this->order?->lines->firstWhere('id', $lineId);
+
+        if ($line === null) {
+            return;
+        }
+
+        $this->refundQuantities[$lineId] = max(0, min($line->quantity - $line->refunded_quantity, ($this->refundQuantities[$lineId] ?? 0) + $by));
+    }
+
+    public function confirmRefund(): void
+    {
+        if ($this->shift === null) {
+            $this->say('Refunds are paid in cash, so open a shift first.', 'error');
+
+            return;
+        }
+
+        $amount = $this->refundMode === 'amount' ? Money::parse($this->refundAmount) : null;
+
+        if ($this->refundMode === 'amount' && $amount === null) {
+            $this->say('Enter the amount to refund.', 'error');
+
+            return;
+        }
+
+        $this->attemptWithApproval(function () use ($amount): void {
+            $refund = app(Till::class)->refund(
+                $this->order,
+                $this->user(),
+                $this->shift,
+                $this->refundReason,
+                $this->refundMode === 'items' ? array_filter($this->refundQuantities) : [],
+                $amount,
+                $this->approvalPin ?: null,
+            );
+
+            $this->resetCorrections();
+            $this->say("Refund {$refund->number_label}: give the customer ".$this->money($refund->amount).' in cash.', 'success');
+            $this->dispatch('print-receipt', url: route('pos.refund-slip', $refund->ulid));
+        });
+    }
+
+    public function closeCorrection(): void
+    {
+        $this->resetCorrections();
+    }
+
+    private function resetCorrections(): void
+    {
+        $this->reset('discounting', 'discountType', 'discountValue', 'discountReason', 'voidingItemId', 'voidReason', 'cancelling', 'cancelReason', 'refunding', 'refundMode', 'refundQuantities', 'refundAmount', 'refundReason', 'needsApproval', 'approvalPin');
+    }
+
+    private function discountedLine(): ?OrderItem
+    {
+        return is_int($this->discounting) ? $this->item($this->discounting) : null;
+    }
+
+    /**
+     * Run a correction. If it needs a supervisor, the dialog stays open and
+     * asks for their PIN; the next try sends it.
+     */
+    private function attemptWithApproval(callable $action): void
+    {
+        try {
+            $action();
+        } catch (ApprovalRequired $exception) {
+            $this->needsApproval = true;
+            $this->say($exception->getMessage(), 'warning');
+        } catch (SaleException $exception) {
+            $this->approvalPin = '';
+            $this->say($exception->getMessage(), 'error');
+        } catch (AuthorizationException) {
+            $this->say('Your role does not allow that.', 'error');
+        }
+
+        unset($this->order, $this->openOrders, $this->shift, $this->shiftSummary, $this->transactions, $this->kitchenOrders);
+    }
+
     // Payment -------------------------------------------------------------
+
+    public function openPayment(): void
+    {
+        if ($this->shift === null) {
+            $this->say('Open a shift before taking payment.', 'error');
+
+            return;
+        }
+
+        $this->paying = true;
+        $this->payingWithId = null;
+    }
+
+    public function closePayment(): void
+    {
+        $this->reset('paying', 'payingWithId', 'payAmount', 'payReference');
+    }
 
     public function startPayment(int $methodId): void
     {
@@ -697,6 +931,7 @@ class Register extends Component
             $payment = app(Till::class)->takePayment($this->order, $this->user(), $this->shift, $this->payingWith, $amount, $this->payReference ?: null, $this->paymentKey);
 
             $this->payingWithId = null;
+            $this->paying = false;
             unset($this->order);
 
             $done = ! $this->order->isOpen();

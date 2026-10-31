@@ -24,7 +24,6 @@ use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The settings of the restaurant currently being acted in: its business
@@ -137,6 +136,14 @@ class RestaurantSettings extends Page
                             ->label('Round bill totals to the nearest 5 sen')
                             ->helperText('For every payment method. RM 11.66 becomes RM 11.65, and RM 11.68 becomes RM 11.70. The difference is shown on the receipt as Rounding.')
                             ->columnSpanFull(),
+                        TextInput::make('refund_days')
+                            ->label('Refunds allowed for')
+                            ->helperText('Days after payment. Refunds are given in cash.')
+                            ->integer()
+                            ->minValue(0)
+                            ->maxValue(365)
+                            ->suffix('days')
+                            ->required(),
                         Text::make('Service charge and the time each business day starts are set on each branch.')
                             ->columnSpanFull(),
                     ]),

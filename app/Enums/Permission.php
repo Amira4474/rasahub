@@ -69,6 +69,14 @@ enum Permission: string
     // Move orders along in the kitchen: preparing, ready, served.
     case UseKitchenDisplay = 'kitchen.use';
 
+    // Correcting orders.
+    case ApplyDiscounts = 'discounts.apply';
+    case ManualDiscounts = 'discounts.manual';
+    case ManageDiscounts = 'discounts.manage';
+    case VoidItems = 'items.void';
+    case CancelOrders = 'orders.cancel';
+    case IssueRefunds = 'refunds.issue';
+
     public function isPlatform(): bool
     {
         return in_array($this, [

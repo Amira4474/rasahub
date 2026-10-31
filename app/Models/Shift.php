@@ -62,13 +62,23 @@ class Shift extends Model
     }
 
     /**
-     * The cash that should be in the drawer: the float plus cash taken.
+     * @return HasMany<Refund, $this>
+     */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    /**
+     * The cash that should be in the drawer: the float plus cash taken,
+     * less cash refunded.
      */
     public function expectedCash(): string
     {
         $cash = (string) $this->payments()->where('method_type', PaymentMethodType::Cash)->sum('amount');
+        $refunded = (string) $this->refunds()->sum('amount');
 
-        return bcadd($this->opening_float, $cash, 2);
+        return bcsub(bcadd($this->opening_float, $cash, 2), $refunded, 2);
     }
 
     /**

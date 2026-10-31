@@ -30,7 +30,7 @@ and the version in [`VERSION.md`](../VERSION.md).
 | v0.1.0 | Catalogue: categories, products, modifier groups, set meals (done) |
 | v0.2.0 | Restaurant Settings (tax, rounding, cut-off, SST number), tables and floor plan (done) |
 | v0.3.0 | Sales core: shifts, orders, payments, receipts, customers (done) |
-| v0.4.0 | Discounts, voids, cancellations, refunds |
+| v0.4.0 | Discounts, voids, cancellations, refunds (done) |
 | v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway |
 | v0.6.0 | Reporting |
 | v0.7.0 | QR ordering |
@@ -140,7 +140,18 @@ customer's order history and total spend.
 pickers, the order panel, send to kitchen, pay, print. Built with Livewire
 and Alpine, which the project already has.
 
-## v0.4.0 Discounts, voids, cancellations, refunds
+## v0.4.0 Discounts, voids, cancellations, refunds (done)
+
+Decided on 2026-11-01:
+
+- **Approval:** a Supervisor, Manager or Owner approves at the till with a
+  short approval PIN (4 to 6 digits) set on their staff record.
+- **Refunds** are allowed within 30 days of payment, a number the
+  restaurant can change in Restaurant settings, and are **always paid in
+  cash** for now.
+- **Manual discounts** have no cap, but always need a reason, and approval
+  when the cashier does not hold the permission.
+- **The kitchen display** stays a Growth and Enterprise feature.
 
 - Discounts on an item or the whole order, as an amount or a percentage,
   from presets (Staff 20%) or entered by hand, always with a reason.

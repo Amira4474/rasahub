@@ -6,6 +6,7 @@
     $shift = $this->shift;
     $mayPay = $this->allowed(Permission::TakePayments);
     $mayRunShift = $this->allowed(Permission::ManageShifts);
+    $mayDiscount = $this->allowed(Permission::ApplyDiscounts);
     $button = 'rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-4';
     $primary = $button.' bg-chili-500 text-white hover:bg-chili-600 focus:ring-chili-500/30 disabled:opacity-40';
     $secondary = $button.' bg-white/10 text-cream-50 hover:bg-white/20 focus:ring-white/20';
@@ -274,10 +275,10 @@
 
                 <ul class="min-h-0 flex-1 divide-y divide-cream-200 overflow-y-auto px-4">
                     @forelse ($order->lines as $line)
-                        <li wire:key="line-{{ $line->id }}" class="py-3">
+                        <li wire:key="line-{{ $line->id }}" @class(['py-3', 'opacity-60' => $line->isVoided()])>
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="font-semibold">{{ $line->quantity }} × {{ $line->name }}</p>
+                                    <p @class(['font-semibold', 'line-through' => $line->isVoided()])>{{ $line->quantity }} × {{ $line->name }}</p>
                                     @foreach ($line->modifiers as $modifier)
                                         <p class="text-sm text-ink-500">{{ $modifier->name }}@if ($modifier->price_delta !== '0.00') ({{ $modifier->price_delta > 0 ? '+' : '' }}{{ $modifier->price_delta }})@endif</p>
                                     @endforeach
@@ -287,15 +288,34 @@
                                     @if ($line->note)
                                         <p class="text-sm italic text-ink-500">“{{ $line->note }}”</p>
                                     @endif
-                                    <p class="text-xs font-semibold uppercase tracking-wider {{ $line->isSent() ? 'text-pandan-600' : 'text-saffron-500' }}">{{ $line->isSent() ? 'Sent' : 'Not sent' }}</p>
+                                    @if ($line->isVoided())
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-chili-600">Void · {{ $line->void_reason }}</p>
+                                    @else
+                                        <p class="text-xs font-semibold uppercase tracking-wider {{ $line->isSent() ? 'text-pandan-600' : 'text-saffron-500' }}">{{ $line->isSent() ? 'Sent' : 'Not sent' }}@if ($line->refunded_quantity) · {{ $line->refunded_quantity }} refunded @endif</p>
+                                    @endif
+                                    @foreach ($line->discounts as $lineDiscount)
+                                        <p class="flex items-center gap-2 text-sm text-pandan-600">
+                                            {{ $lineDiscount->label() }} −{{ $lineDiscount->amount }}
+                                            @if ($order->isOpen() && $mayDiscount)
+                                                <button type="button" wire:click="removeDiscount({{ $lineDiscount->id }})" class="text-chili-600" aria-label="Remove {{ $lineDiscount->name }}">×</button>
+                                            @endif
+                                        </p>
+                                    @endforeach
                                 </div>
                                 <div class="shrink-0 text-right">
-                                    <p class="font-semibold">{{ number_format((float) bcadd($line->line_total, (string) $line->parts->sum('line_total'), 2), 2) }}</p>
-                                    @if (! $line->isSent() && $order->isOpen())
-                                        <div class="mt-1 flex items-center gap-1">
-                                            <button type="button" wire:click="changeQuantity({{ $line->id }}, -1)" class="size-8 rounded-lg bg-cream-200 font-bold" aria-label="One fewer {{ $line->name }}">−</button>
-                                            <button type="button" wire:click="changeQuantity({{ $line->id }}, 1)" class="size-8 rounded-lg bg-cream-200 font-bold" aria-label="One more {{ $line->name }}">+</button>
-                                            <button type="button" wire:click="removeItem({{ $line->id }})" class="size-8 rounded-lg bg-chili-100 font-bold text-chili-600" aria-label="Remove {{ $line->name }}">×</button>
+                                    <p @class(['font-semibold', 'line-through' => $line->isVoided()])>{{ number_format((float) $line->grossTotal(), 2) }}</p>
+                                    @if ($order->isOpen() && ! $line->isVoided())
+                                        <div class="mt-1 flex items-center justify-end gap-1">
+                                            @if ($mayDiscount)
+                                                <button type="button" wire:click="openDiscount({{ $line->id }})" class="grid size-8 place-items-center rounded-lg bg-cream-200" aria-label="Discount {{ $line->name }}" title="Discount">@svg('heroicon-o-tag', 'size-4')</button>
+                                            @endif
+                                            @if (! $line->isSent())
+                                                <button type="button" wire:click="changeQuantity({{ $line->id }}, -1)" class="size-8 rounded-lg bg-cream-200 font-bold" aria-label="One fewer {{ $line->name }}">−</button>
+                                                <button type="button" wire:click="changeQuantity({{ $line->id }}, 1)" class="size-8 rounded-lg bg-cream-200 font-bold" aria-label="One more {{ $line->name }}">+</button>
+                                                <button type="button" wire:click="removeItem({{ $line->id }})" class="size-8 rounded-lg bg-chili-100 font-bold text-chili-600" aria-label="Remove {{ $line->name }}">×</button>
+                                            @else
+                                                <button type="button" wire:click="openVoid({{ $line->id }})" class="rounded-lg bg-chili-100 px-2 py-1.5 text-xs font-semibold text-chili-600" aria-label="Void {{ $line->name }}">Void</button>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
@@ -309,6 +329,20 @@
                 <div class="border-t border-cream-200 p-4">
                     <dl class="space-y-1 text-sm">
                         <div class="flex justify-between"><dt>Subtotal</dt><dd>{{ $this->money($order->subtotal) }}</dd></div>
+                        @foreach ($order->discounts->whereNull('order_item_id') as $orderDiscount)
+                            <div class="flex justify-between text-pandan-600">
+                                <dt class="flex items-center gap-2">
+                                    {{ $orderDiscount->label() }}
+                                    @if ($order->isOpen() && $mayDiscount)
+                                        <button type="button" wire:click="removeDiscount({{ $orderDiscount->id }})" class="text-chili-600" aria-label="Remove {{ $orderDiscount->name }}">×</button>
+                                    @endif
+                                </dt>
+                                <dd>−{{ $this->money($orderDiscount->amount) }}</dd>
+                            </div>
+                        @endforeach
+                        @if ($order->discount_total !== '0.00' && $order->discounts->whereNotNull('order_item_id')->isNotEmpty())
+                            <div class="flex justify-between text-pandan-600"><dt>Item discounts</dt><dd>−{{ $this->money($order->discounts->whereNotNull('order_item_id')->sum('amount')) }}</dd></div>
+                        @endif
                         @if ($order->service_charge !== '0.00')
                             <div class="flex justify-between"><dt>Service charge {{ rtrim(rtrim($order->service_charge_rate, '0'), '.') }}%</dt><dd>{{ $this->money($order->service_charge) }}</dd></div>
                         @endif
@@ -325,25 +359,44 @@
                         @if ($order->paid !== '0.00' && $order->isOpen())
                             <div class="flex justify-between font-semibold"><dt>Balance</dt><dd>{{ $this->money($order->balance()) }}</dd></div>
                         @endif
+                        @foreach ($order->refunds as $refund)
+                            <div class="flex justify-between text-chili-600">
+                                <dt>Refunded · {{ $refund->number_label }} <a href="{{ route('pos.refund-slip', $refund->ulid) }}" target="receipt" class="underline underline-offset-2">slip</a></dt>
+                                <dd>−{{ $this->money($refund->amount) }}</dd>
+                            </div>
+                        @endforeach
                     </dl>
 
                     @if ($order->isOpen())
-                        <div class="mt-4 grid gap-2">
-                            <button type="button" wire:click="sendToKitchen" class="{{ $light }}">Send to kitchen</button>
+                        {{-- Kept to two rows so the item list keeps its room. --}}
+                        <div class="mt-3 grid gap-2">
+                            <div @class(['grid gap-2', 'grid-cols-3' => $mayDiscount, 'grid-cols-2' => ! $mayDiscount])>
+                                <button type="button" wire:click="sendToKitchen" class="{{ $light }} px-2">Send</button>
+                                @if ($mayDiscount)
+                                    <button type="button" wire:click="openDiscount('order')" @disabled($order->lines->isEmpty()) class="{{ $light }} px-2">Discount</button>
+                                @endif
+                                <button type="button" wire:click="openCancel" class="{{ $light }} px-2">Cancel</button>
+                            </div>
                             @if ($mayPay)
-                                <div class="grid grid-cols-2 gap-2">
-                                    @foreach ($this->methods as $method)
-                                        <button type="button" wire:key="method-{{ $method->id }}" wire:click="startPayment({{ $method->id }})" @disabled($order->lines->isEmpty()) class="{{ $primary }}">{{ $method->name }}</button>
-                                    @endforeach
-                                </div>
+                                <button type="button" wire:click="openPayment" @disabled($order->lines->isEmpty()) class="{{ $primary }} flex items-center justify-center gap-2 py-3 text-base">
+                                    @svg('heroicon-o-banknotes', 'size-5')
+                                    Pay {{ $this->money($order->balance()) }}
+                                </button>
                             @else
                                 <p class="text-center text-sm text-ink-500">A cashier takes payment.</p>
                             @endif
                         </div>
                     @else
                         <div class="mt-4 grid gap-2">
-                            <p class="text-center font-semibold text-pandan-600">Paid · Receipt {{ $order->receiptLabel() }}</p>
-                            <a href="{{ route('pos.receipt', $order->ulid) }}" target="receipt" class="{{ $light }} text-center">Print receipt</a>
+                            @if ($order->status === \App\Enums\OrderStatus::Cancelled)
+                                <p class="text-center font-semibold text-chili-600">Cancelled · {{ $order->cancel_reason }}</p>
+                            @else
+                                <p class="text-center font-semibold text-pandan-600">{{ $order->payment_status->label() }} · Receipt {{ $order->receiptLabel() }}</p>
+                                <a href="{{ route('pos.receipt', $order->ulid) }}" target="receipt" class="{{ $light }} text-center">Print receipt</a>
+                                @if (\App\Support\Money::isPositive($order->refundable()))
+                                    <button type="button" wire:click="openRefund" class="{{ $light }}">Refund</button>
+                                @endif
+                            @endif
                             <button type="button" wire:click="closeOrder" class="{{ $primary }}">Next order</button>
                         </div>
                     @endif
@@ -442,44 +495,214 @@
         </x-pos.modal>
     @endif
 
-    {{-- Payment --}}
-    @if ($this->payingWith && $order)
+    {{-- Payment: what is owed, the ways to pay, and the details for the
+         way chosen. --}}
+    @if (($paying || $this->payingWith) && $order)
         @php($method = $this->payingWith)
-        <x-pos.modal :heading="'Pay by '.$method->name">
-            <form wire:submit="takePayment" class="space-y-4">
-                <p class="text-sm text-ink-500">Balance to pay: <span class="font-semibold text-ink-900">{{ $this->money($order->balance()) }}</span></p>
-
-                @if ($method->type === PaymentMethodType::Qr)
-                    @if ($url = $this->qrImageUrl($method))
-                        <img src="{{ $url }}" alt="{{ $method->name }} QR code for the customer to scan" class="mx-auto max-h-72 rounded-xl border border-cream-200 bg-white p-2">
-                        <p class="text-center text-sm text-ink-500">Ask the customer to scan the code, then confirm once the payment shows on your phone.</p>
-                    @else
-                        <p class="rounded-xl bg-saffron-100 p-3 text-sm">No QR code image has been added for {{ $method->name }}. The owner adds it under Payment methods in the admin.</p>
-                    @endif
+        <x-pos.modal :heading="'Pay order '.$order->number_label">
+            <dl class="space-y-1 rounded-xl bg-cream-100 p-4 text-sm">
+                <div class="flex justify-between"><dt>Subtotal</dt><dd>{{ $this->money($order->subtotal) }}</dd></div>
+                @if ($order->discount_total !== '0.00')
+                    <div class="flex justify-between text-pandan-600"><dt>Discounts</dt><dd>−{{ $this->money($order->discount_total) }}</dd></div>
                 @endif
+                @if ($order->service_charge !== '0.00')
+                    <div class="flex justify-between"><dt>Service charge {{ rtrim(rtrim($order->service_charge_rate, '0'), '.') }}%</dt><dd>{{ $this->money($order->service_charge) }}</dd></div>
+                @endif
+                @if ($order->sst_enabled)
+                    <div class="flex justify-between text-ink-500"><dt>SST {{ rtrim(rtrim($order->sst_rate, '0'), '.') }}%{{ $order->prices_include_sst ? ' (included)' : '' }}</dt><dd>{{ $this->money($order->sst) }}</dd></div>
+                @endif
+                @if ($order->rounding !== '0.00')
+                    <div class="flex justify-between text-ink-500"><dt>Rounding</dt><dd>{{ $order->rounding }}</dd></div>
+                @endif
+                <div class="flex justify-between font-semibold"><dt>Total</dt><dd>{{ $this->money($order->total) }}</dd></div>
+                @foreach ($order->payments as $payment)
+                    <div class="flex justify-between text-pandan-600"><dt>Paid · {{ $payment->method_name }}</dt><dd>{{ $this->money($payment->amount) }}</dd></div>
+                @endforeach
+                <div class="flex justify-between border-t border-cream-300 pt-2 font-display text-2xl font-bold"><dt>To pay</dt><dd>{{ $this->money($order->balance()) }}</dd></div>
+            </dl>
 
-                <div>
-                    <label for="pay-amount" class="block text-sm font-semibold">{{ $method->isCash() ? 'Cash received' : 'Amount' }}</label>
-                    <input id="pay-amount" type="text" inputmode="decimal" wire:model="payAmount" required class="{{ $input }} mt-1 text-2xl font-bold">
-                    @if ($method->isCash())
-                        <div class="mt-2 flex flex-wrap gap-2">
-                            @foreach (['10', '20', '50', '100'] as $note)
-                                <button type="button" wire:click="$set('payAmount', '{{ $note }}.00')" class="{{ $light }}">{{ $note }}</button>
-                            @endforeach
+            <p class="mt-4 text-sm font-semibold">Payment method</p>
+            <div class="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
+                @foreach ($this->methods as $option)
+                    <button
+                        type="button"
+                        role="radio"
+                        aria-checked="{{ $method?->is($option) ? 'true' : 'false' }}"
+                        wire:key="method-{{ $option->id }}"
+                        wire:click="startPayment({{ $option->id }})"
+                        @class([
+                            'flex items-center gap-2 rounded-xl border-2 px-3 py-3 text-left text-sm font-semibold transition',
+                            'border-chili-500 bg-chili-500 text-white' => $method?->is($option),
+                            'border-cream-300 hover:border-ink-500' => ! $method?->is($option),
+                        ])
+                    >
+                        @svg(match ($option->type) {
+                            PaymentMethodType::Cash => 'heroicon-o-banknotes',
+                            PaymentMethodType::Card => 'heroicon-o-credit-card',
+                            PaymentMethodType::Qr => 'heroicon-o-qr-code',
+                            default => 'heroicon-o-ellipsis-horizontal-circle',
+                        }, 'size-5 shrink-0')
+                        {{ $option->name }}
+                    </button>
+                @endforeach
+            </div>
+
+            @if ($method)
+                <form wire:submit="takePayment" class="mt-4 space-y-4">
+                    @if ($method->type === PaymentMethodType::Qr)
+                        @if ($url = $this->qrImageUrl($method))
+                            <img src="{{ $url }}" alt="{{ $method->name }} QR code for the customer to scan" class="mx-auto max-h-60 rounded-xl border border-cream-200 bg-white p-2">
+                            <p class="text-center text-sm text-ink-500">Ask the customer to scan the code, then confirm once the payment shows on your phone.</p>
+                        @else
+                            <p class="rounded-xl bg-saffron-100 p-3 text-sm">No QR code image has been added for {{ $method->name }}. The owner adds it under Payment methods in the admin.</p>
+                        @endif
+                    @endif
+
+                    <div>
+                        <label for="pay-amount" class="block text-sm font-semibold">{{ $method->isCash() ? 'Cash received' : 'Amount' }}</label>
+                        <input id="pay-amount" type="text" inputmode="decimal" wire:model="payAmount" required class="{{ $input }} mt-1 text-2xl font-bold">
+                        @if ($method->isCash())
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach (['10', '20', '50', '100'] as $note)
+                                    <button type="button" wire:click="$set('payAmount', '{{ $note }}.00')" class="{{ $light }}">{{ $note }}</button>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    @if (! $method->isCash())
+                        <div>
+                            <label for="pay-reference" class="block text-sm font-semibold">Reference @unless ($method->requires_reference)<span class="font-normal text-ink-500">(optional)</span>@endunless</label>
+                            <input id="pay-reference" type="text" maxlength="64" wire:model="payReference" @required($method->requires_reference) placeholder="Approval code or transaction ID" class="{{ $input }} mt-1">
                         </div>
                     @endif
-                </div>
 
-                @if (! $method->isCash())
+                    <div class="flex justify-end gap-2">
+                        <button type="button" wire:click="closePayment" class="{{ $light }}">Cancel</button>
+                        <button type="submit" wire:loading.attr="disabled" class="{{ $primary }}">Take payment</button>
+                    </div>
+                </form>
+            @else
+                <div class="mt-4 flex justify-end">
+                    <button type="button" wire:click="closePayment" class="{{ $light }}">Cancel</button>
+                </div>
+            @endif
+        </x-pos.modal>
+    @endif
+
+    {{-- Corrections. Each asks for a supervisor's PIN in place when the
+         user may not do it alone. --}}
+    @php($pinField = '<div class="rounded-xl bg-saffron-100 p-3"><label for="approval-pin" class="block text-sm font-semibold">Supervisor PIN</label><input id="approval-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" wire:model="approvalPin" autofocus required class="'.$input.' mt-1 text-center text-2xl tracking-[0.5em]"><p class="mt-1 text-xs text-ink-500">A Supervisor, Manager or Owner approves with their PIN.</p></div>')
+
+    @if ($discounting !== null && $order)
+        @php($forLine = is_int($discounting) ? $order->lines->firstWhere('id', $discounting) : null)
+        <x-pos.modal :heading="$forLine ? 'Discount '.$forLine->name : 'Discount order '.$order->number_label">
+            @php($presets = $this->presets->where('scope', $forLine ? \App\Enums\DiscountScope::Item : \App\Enums\DiscountScope::Order))
+            @if ($presets->isNotEmpty())
+                <p class="text-sm font-semibold">Discounts</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach ($presets as $preset)
+                        <button type="button" wire:key="preset-{{ $preset->id }}" wire:click="applyPreset({{ $preset->id }})" class="rounded-xl border-2 border-pandan-500 px-3 py-2 text-sm font-semibold text-pandan-600 hover:bg-pandan-100">
+                            {{ $preset->name }} · {{ $preset->valueLabel(app(\App\Tenancy\TenantContext::class)->business()->currency) }}
+                        </button>
+                    @endforeach
+                </div>
+                <p class="mt-5 text-sm font-semibold">Or a discount of your own</p>
+            @endif
+            <form wire:submit="applyManualDiscount" class="mt-2 space-y-4">
+                <div class="grid grid-cols-[auto_1fr] gap-2">
+                    <div class="flex rounded-xl bg-cream-200 p-1">
+                        @foreach (['percent' => '%', 'amount' => app(\App\Tenancy\TenantContext::class)->business()->currency] as $type => $sign)
+                            <button type="button" wire:click="$set('discountType', '{{ $type }}')" @class(['rounded-lg px-3 py-1.5 text-sm font-semibold', 'bg-white shadow' => $discountType === $type])>{{ $sign }}</button>
+                        @endforeach
+                    </div>
+                    <input type="text" inputmode="decimal" wire:model="discountValue" placeholder="{{ $discountType === 'percent' ? 'e.g. 10' : 'e.g. 5.00' }}" aria-label="Discount" class="{{ $input }}">
+                </div>
+                <div>
+                    <label for="discount-reason" class="block text-sm font-semibold">Reason</label>
+                    <input id="discount-reason" type="text" maxlength="200" wire:model="discountReason" placeholder="e.g. complaint, regular customer" class="{{ $input }} mt-1">
+                </div>
+                @if ($needsApproval) {!! $pinField !!} @endif
+                <div class="flex justify-end gap-2">
+                    <button type="button" wire:click="closeCorrection" class="{{ $light }}">Cancel</button>
+                    <button type="submit" class="{{ $primary }}">Give discount</button>
+                </div>
+            </form>
+        </x-pos.modal>
+    @endif
+
+    @if ($voidingItemId !== null && $order)
+        @php($voiding = $order->lines->firstWhere('id', $voidingItemId))
+        <x-pos.modal :heading="'Void '.($voiding?->name ?? 'item')">
+            <form wire:submit="confirmVoid" class="space-y-4">
+                <p class="text-sm text-ink-500">It has been sent to the kitchen. It stays on the order crossed out, and is not charged.</p>
+                <div>
+                    <label for="void-reason" class="block text-sm font-semibold">Reason</label>
+                    <input id="void-reason" type="text" maxlength="200" wire:model="voidReason" required placeholder="e.g. customer changed their mind" class="{{ $input }} mt-1">
+                </div>
+                @if ($needsApproval) {!! $pinField !!} @endif
+                <div class="flex justify-end gap-2">
+                    <button type="button" wire:click="closeCorrection" class="{{ $light }}">Back</button>
+                    <button type="submit" class="{{ $primary }}">Void</button>
+                </div>
+            </form>
+        </x-pos.modal>
+    @endif
+
+    @if ($cancelling && $order)
+        <x-pos.modal :heading="'Cancel order '.$order->number_label">
+            <form wire:submit="confirmCancel" class="space-y-4">
+                <p class="text-sm text-ink-500">Nothing on it will be charged, and its table is freed. An order with payments cannot be cancelled; refund it instead.</p>
+                <div>
+                    <label for="cancel-reason" class="block text-sm font-semibold">Reason</label>
+                    <input id="cancel-reason" type="text" maxlength="200" wire:model="cancelReason" required placeholder="e.g. customer left" class="{{ $input }} mt-1">
+                </div>
+                @if ($needsApproval) {!! $pinField !!} @endif
+                <div class="flex justify-end gap-2">
+                    <button type="button" wire:click="closeCorrection" class="{{ $light }}">Back</button>
+                    <button type="submit" class="{{ $primary }}">Cancel order</button>
+                </div>
+            </form>
+        </x-pos.modal>
+    @endif
+
+    @if ($refunding && $order)
+        <x-pos.modal :heading="'Refund order '.$order->number_label">
+            <form wire:submit="confirmRefund" class="space-y-4">
+                <p class="text-sm text-ink-500">Paid {{ $this->money($order->paid) }}; up to {{ $this->money($order->refundable()) }} can still be refunded. Refunds are given in cash from this shift's drawer.</p>
+                <div class="flex rounded-xl bg-cream-200 p-1 text-sm font-semibold">
+                    <button type="button" wire:click="$set('refundMode', 'items')" @class(['flex-1 rounded-lg px-3 py-1.5', 'bg-white shadow' => $refundMode === 'items'])>Items</button>
+                    <button type="button" wire:click="$set('refundMode', 'amount')" @class(['flex-1 rounded-lg px-3 py-1.5', 'bg-white shadow' => $refundMode === 'amount'])>Amount</button>
+                </div>
+                @if ($refundMode === 'items')
+                    <ul class="divide-y divide-cream-200 text-sm">
+                        @foreach ($order->lines->reject->isVoided() as $refundLine)
+                            @php($left = $refundLine->quantity - $refundLine->refunded_quantity)
+                            <li wire:key="refund-line-{{ $refundLine->id }}" class="flex items-center justify-between gap-3 py-2">
+                                <span>{{ $refundLine->name }} <span class="text-ink-500">· {{ $left }} of {{ $refundLine->quantity }} left</span></span>
+                                <span class="flex items-center gap-1">
+                                    <button type="button" wire:click="changeRefundQuantity({{ $refundLine->id }}, -1)" class="size-8 rounded-lg bg-cream-200 font-bold" aria-label="One fewer {{ $refundLine->name }}">−</button>
+                                    <span class="w-6 text-center font-semibold tabular-nums">{{ $refundQuantities[$refundLine->id] ?? 0 }}</span>
+                                    <button type="button" wire:click="changeRefundQuantity({{ $refundLine->id }}, 1)" @disabled($left === 0) class="size-8 rounded-lg bg-cream-200 font-bold disabled:opacity-40" aria-label="One more {{ $refundLine->name }}">+</button>
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <p class="text-xs text-ink-500">Each item is refunded at its share of what was paid, with SST, service charge and discounts.</p>
+                @else
                     <div>
-                        <label for="pay-reference" class="block text-sm font-semibold">Reference @unless ($method->requires_reference)<span class="font-normal text-ink-500">(optional)</span>@endunless</label>
-                        <input id="pay-reference" type="text" maxlength="64" wire:model="payReference" @required($method->requires_reference) placeholder="Approval code or transaction ID" class="{{ $input }} mt-1">
+                        <label for="refund-amount" class="block text-sm font-semibold">Amount</label>
+                        <input id="refund-amount" type="text" inputmode="decimal" wire:model="refundAmount" class="{{ $input }} mt-1 text-2xl font-bold">
                     </div>
                 @endif
-
+                <div>
+                    <label for="refund-reason" class="block text-sm font-semibold">Reason</label>
+                    <input id="refund-reason" type="text" maxlength="200" wire:model="refundReason" required placeholder="e.g. cold food" class="{{ $input }} mt-1">
+                </div>
+                @if ($needsApproval) {!! $pinField !!} @endif
                 <div class="flex justify-end gap-2">
-                    <button type="button" wire:click="$set('payingWithId', null)" class="{{ $light }}">Cancel</button>
-                    <button type="submit" wire:loading.attr="disabled" class="{{ $primary }}">Take payment</button>
+                    <button type="button" wire:click="closeCorrection" class="{{ $light }}">Back</button>
+                    <button type="submit" class="{{ $primary }}">Refund in cash</button>
                 </div>
             </form>
         </x-pos.modal>

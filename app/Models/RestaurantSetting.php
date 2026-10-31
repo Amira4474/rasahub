@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * tenant's database. New tenants start with SST on at 6%, menu prices
  * including SST, and totals rounded to 5 sen.
  */
-#[Fillable(['sst_enabled', 'sst_rate', 'prices_include_sst', 'sst_registration_number', 'round_to_five_sen', 'receipt_logo_path', 'receipt_header', 'receipt_footer'])]
+#[Fillable(['sst_enabled', 'sst_rate', 'prices_include_sst', 'sst_registration_number', 'round_to_five_sen', 'refund_days', 'receipt_logo_path', 'receipt_header', 'receipt_footer'])]
 class RestaurantSetting extends Model
 {
     use UsesTenantDatabase;
@@ -21,6 +21,7 @@ class RestaurantSetting extends Model
         'sst_rate' => '6.00',
         'prices_include_sst' => true,
         'round_to_five_sen' => true,
+        'refund_days' => 30,
     ];
 
     /**
@@ -56,6 +57,7 @@ class RestaurantSetting extends Model
             'sst_rate' => 'decimal:2',
             'prices_include_sst' => 'boolean',
             'round_to_five_sen' => 'boolean',
+            'refund_days' => 'integer',
         ];
     }
 }

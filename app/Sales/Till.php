@@ -2,6 +2,10 @@
 
 namespace App\Sales;
 
+use App\Audit\Audit;
+use App\Enums\AuditEvent;
+use App\Enums\DiscountScope;
+use App\Enums\DiscountType;
 use App\Enums\KitchenStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
@@ -9,13 +13,16 @@ use App\Enums\PaymentStatus;
 use App\Enums\Permission;
 use App\Models\Customer;
 use App\Models\DiningTable;
+use App\Models\DiscountPreset;
 use App\Models\Modifier;
 use App\Models\ModifierGroup;
 use App\Models\Order;
+use App\Models\OrderDiscount;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\Refund;
 use App\Models\RestaurantSetting;
 use App\Models\SetGroup;
 use App\Models\SetGroupItem;
@@ -74,6 +81,16 @@ class Till
             'variance' => bcsub($counted, $expected, 2),
             'closing_note' => $note,
         ]);
+
+        if (bccomp($shift->variance, '0', 2) !== 0) {
+            app(Audit::class)->record(AuditEvent::CashDrawerDifference, properties: array_filter([
+                'terminal' => $shift->terminal->name,
+                'expected' => $expected,
+                'counted' => $counted,
+                'difference' => $shift->variance,
+                'note' => $note,
+            ]));
+        }
 
         return $shift;
     }
@@ -476,6 +493,335 @@ class Till
 
             return $payment;
         });
+    }
+
+    /**
+     * Give a discount on a line or on the whole order: a preset, or one typed
+     * in with a reason. A typed discount needs approval from someone who may
+     * give one, unless the user may themselves.
+     */
+    public function applyDiscount(
+        Order $order,
+        User $user,
+        ?OrderItem $item,
+        ?DiscountPreset $preset,
+        ?DiscountType $type = null,
+        ?string $value = null,
+        ?string $reason = null,
+        ?string $pin = null,
+    ): OrderDiscount {
+        $this->authorize($user, Permission::ApplyDiscounts);
+        $this->ensureOpen($order);
+
+        if ($item !== null && ($item->order_id !== $order->id || $item->parent_id !== null || $item->isVoided())) {
+            throw new SaleException('That line cannot be discounted.');
+        }
+
+        $approver = $user;
+
+        if ($preset !== null) {
+            if (! $preset->is_active || $preset->scope !== ($item ? DiscountScope::Item : DiscountScope::Order)) {
+                throw new SaleException("{$preset->name} cannot be given here.");
+            }
+
+            [$name, $type, $value] = [$preset->name, $preset->type, $preset->value];
+        } else {
+            if ($type === null || $value === null || ! Money::isPositive($value)) {
+                throw new SaleException('Enter the discount.');
+            }
+
+            if ($type === DiscountType::Percent && bccomp($value, '100', 2) > 0) {
+                throw new SaleException('A discount cannot be more than 100%.');
+            }
+
+            if (blank($reason)) {
+                throw new SaleException('Give a reason for the discount.');
+            }
+
+            $approver = $this->approval($user, Permission::ManualDiscounts, $pin);
+            $name = 'Discount';
+        }
+
+        return DB::connection($order->getConnectionName())->transaction(function () use ($order, $user, $item, $preset, $type, $value, $reason, $approver, $name): OrderDiscount {
+            $discount = $order->discounts()->create([
+                'order_item_id' => $item?->id,
+                'discount_preset_id' => $preset?->id,
+                'name' => $name,
+                'type' => $type,
+                'value' => $value,
+                'reason' => filled($reason) ? $reason : null,
+                'applied_by' => $user->id,
+                'approved_by' => $approver->is($user) ? null : $approver->id,
+            ]);
+
+            OrderTotals::apply($order);
+
+            if (bccomp($order->total, $order->paid, 2) < 0) {
+                throw new SaleException('The discount would take the total below what has already been paid.');
+            }
+
+            if ($preset === null) {
+                $this->audit(AuditEvent::DiscountGiven, $order, $user, $approver, [
+                    'line' => $item?->name,
+                    'discount' => $type->value === 'percent' ? "{$value}%" : $value,
+                    'amount' => $discount->fresh()->amount,
+                    'reason' => $reason,
+                ]);
+            }
+
+            return $discount;
+        });
+    }
+
+    public function removeDiscount(OrderDiscount $discount, User $user): void
+    {
+        $this->authorize($user, Permission::ApplyDiscounts);
+
+        $order = Order::findOrFail($discount->order_id);
+        $this->ensureOpen($order);
+
+        $discount->delete();
+        OrderTotals::apply($order);
+    }
+
+    /**
+     * Take back a line already sent to the kitchen. It stays on the order,
+     * crossed out and at nothing. Needs approval unless the user may void.
+     */
+    public function voidItem(OrderItem $item, User $user, string $reason, ?string $pin = null): void
+    {
+        $this->authorize($user, Permission::TakeOrders);
+
+        $order = $item->order;
+        $this->ensureOpen($order);
+
+        if ($item->parent_id !== null || $item->isVoided()) {
+            throw new SaleException('That line cannot be voided.');
+        }
+
+        if (! $item->isSent()) {
+            $this->removeItem($item, $user);
+
+            return;
+        }
+
+        if (blank($reason)) {
+            throw new SaleException('Give a reason for voiding.');
+        }
+
+        $approver = $this->approval($user, Permission::VoidItems, $pin);
+
+        DB::connection($order->getConnectionName())->transaction(function () use ($item, $order, $user, $reason, $approver): void {
+            $void = [
+                'kitchen_status' => KitchenStatus::Voided,
+                'voided_at' => now(),
+                'void_reason' => $reason,
+                'voided_by' => $user->id,
+                'void_approved_by' => $approver->is($user) ? null : $approver->id,
+            ];
+
+            $item->update($void);
+            $item->parts()->update($void);
+
+            OrderTotals::apply($order);
+
+            if (bccomp($order->total, $order->paid, 2) < 0) {
+                throw new SaleException('Voiding this would take the total below what has already been paid. Refund instead.');
+            }
+
+            $this->audit(AuditEvent::ItemVoided, $order, $user, $approver, [
+                'line' => "{$item->quantity} × {$item->name}",
+                'amount' => $item->grossTotal(),
+                'reason' => $reason,
+            ]);
+        });
+    }
+
+    /**
+     * Cancel an order nothing has been paid on. One with lines in the
+     * kitchen needs approval unless the user may cancel orders.
+     */
+    public function cancelOrder(Order $order, User $user, string $reason, ?string $pin = null): void
+    {
+        $this->authorize($user, Permission::TakeOrders);
+        $this->ensureOpen($order);
+
+        if (Money::isPositive($order->paid)) {
+            throw new SaleException("Order {$order->number_label} has payments. Pay it in full and refund instead.");
+        }
+
+        if (blank($reason)) {
+            throw new SaleException('Give a reason for cancelling.');
+        }
+
+        $sent = $order->items()->whereNotIn('kitchen_status', [KitchenStatus::Pending, KitchenStatus::Voided])->exists();
+        $approver = $sent ? $this->approval($user, Permission::CancelOrders, $pin) : $user;
+
+        DB::connection($order->getConnectionName())->transaction(function () use ($order, $user, $reason, $approver): void {
+            $order->items()->whereNot('kitchen_status', KitchenStatus::Voided)->update(['kitchen_status' => KitchenStatus::Voided, 'voided_at' => now()]);
+
+            $order->update([
+                'status' => OrderStatus::Cancelled,
+                'cancel_reason' => $reason,
+                'cancelled_by' => $user->id,
+                'cancel_approved_by' => $approver->is($user) ? null : $approver->id,
+                'cancelled_at' => now(),
+            ]);
+
+            OrderTotals::apply($order);
+
+            $this->audit(AuditEvent::OrderCancelled, $order, $user, $approver, ['reason' => $reason]);
+        });
+    }
+
+    /**
+     * Give money back for a paid order, in cash from this shift's drawer:
+     * for some of its lines (their share of what was paid), or an amount.
+     *
+     * @param  array<int, int>  $quantities  Quantities to give back, by line.
+     */
+    public function refund(Order $order, User $user, Shift $shift, string $reason, array $quantities = [], ?string $amount = null, ?string $pin = null): Refund
+    {
+        $this->authorize($user, Permission::TakeOrders);
+
+        if ($order->status !== OrderStatus::Completed) {
+            throw new SaleException("Only a paid order can be refunded; order {$order->number_label} is {$order->status->label()}.");
+        }
+
+        $days = RestaurantSetting::current()->refund_days;
+
+        if ($order->completed_at->lt(now()->subDays($days))) {
+            throw new SaleException("Order {$order->number_label} was paid more than {$days} days ago, so it can no longer be refunded.");
+        }
+
+        if (! $shift->isOpen() || $shift->branch_id !== $order->branch_id) {
+            throw new SaleException('Refunds are paid in cash, so a shift must be open on this terminal.');
+        }
+
+        if (blank($reason)) {
+            throw new SaleException('Give a reason for the refund.');
+        }
+
+        $approver = $this->approval($user, Permission::IssueRefunds, $pin);
+
+        return DB::connection($order->getConnectionName())->transaction(function () use ($order, $user, $shift, $reason, $quantities, $amount, $approver): Refund {
+            $order = Order::lockForUpdate()->findOrFail($order->id);
+            $order->load('lines.parts');
+
+            [$value, $lines] = $quantities !== []
+                ? $this->refundForLines($order, $quantities)
+                : [$amount === null ? Money::ZERO : $amount, []];
+
+            if (! Money::isPositive($value)) {
+                throw new SaleException('Choose what to refund.');
+            }
+
+            if (bccomp($value, $order->refundable(), 2) > 0) {
+                throw new SaleException('That is more than can still be refunded: '.$order->refundable().'.');
+            }
+
+            $number = Sequence::next("refund:{$order->branch_id}");
+
+            $refund = $order->refunds()->create([
+                'branch_id' => $order->branch_id,
+                'shift_id' => $shift->id,
+                'number' => $number,
+                'number_label' => $order->branch->code.'-RF'.str_pad((string) $number, 6, '0', STR_PAD_LEFT),
+                'amount' => $value,
+                'method_name' => 'Cash',
+                'reason' => $reason,
+                'items' => $lines ?: null,
+                'refunded_by' => $user->id,
+                'approved_by' => $approver->is($user) ? null : $approver->id,
+            ]);
+
+            foreach ($lines as $line) {
+                OrderItem::whereKey($line['id'])->increment('refunded_quantity', $line['quantity']);
+            }
+
+            $refunded = bcadd($order->refunded, $value, 2);
+
+            $order->update([
+                'refunded' => $refunded,
+                'payment_status' => bccomp($refunded, $order->paid, 2) >= 0 ? PaymentStatus::Refunded : PaymentStatus::PartiallyRefunded,
+            ]);
+
+            $this->audit(AuditEvent::RefundIssued, $order, $user, $approver, [
+                'refund' => $refund->number_label,
+                'amount' => $value,
+                'lines' => collect($lines)->map(fn (array $line): string => "{$line['quantity']} × {$line['name']}")->all() ?: null,
+                'reason' => $reason,
+            ]);
+
+            return $refund;
+        });
+    }
+
+    /**
+     * The share of what was paid that belongs to the chosen lines, with
+     * SST, service charge, order discounts and rounding in proportion.
+     *
+     * @param  array<int, int>  $quantities
+     * @return array{0: string, 1: list<array{id: int, name: string, quantity: int}>}
+     */
+    private function refundForLines(Order $order, array $quantities): array
+    {
+        $goods = bcsub($order->subtotal, $order->discount_total, 2);
+        $share = Money::ZERO;
+        $lines = [];
+
+        foreach ($quantities as $id => $quantity) {
+            $quantity = (int) $quantity;
+
+            if ($quantity < 1) {
+                continue;
+            }
+
+            $line = $order->lines->firstWhere('id', (int) $id);
+
+            if ($line === null || $line->isVoided() || $quantity > $line->quantity - $line->refunded_quantity) {
+                throw new SaleException('Some of those items cannot be refunded.');
+            }
+
+            $share = bcadd($share, bcdiv(bcmul($line->netTotal(), (string) $quantity, 6), (string) $line->quantity, 6), 6);
+            $lines[] = ['id' => $line->id, 'name' => $line->name, 'quantity' => $quantity];
+        }
+
+        if ($lines === [] || ! Money::isPositive($goods)) {
+            return [Money::ZERO, []];
+        }
+
+        $value = Money::round(bcdiv(bcmul($share, $order->paid, 6), $goods, 6));
+
+        // Cash is given back in 5 sen, as it was taken.
+        if ($order->round_to_five_sen) {
+            $value = Money::roundToFiveSen($value);
+        }
+
+        return [Money::min($value, $order->refundable()), $lines];
+    }
+
+    private function approval(User $user, Permission $permission, ?string $pin): User
+    {
+        $approver = app(Approval::class)->approver($user, $permission, $pin);
+
+        if ($approver === null) {
+            throw new ApprovalRequired;
+        }
+
+        return $approver;
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    private function audit(AuditEvent $event, Order $order, User $user, User $approver, array $details): void
+    {
+        app(Audit::class)->record($event, properties: array_filter([
+            'order' => $order->number_label,
+            ...$details,
+            'approved_by' => $approver->is($user) ? null : $approver->name,
+        ], fn ($value): bool => $value !== null));
     }
 
     private function complete(Order $order): void

@@ -21,11 +21,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'business_id', 'is_active'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'approval_pin', 'business_id', 'is_active'])]
+#[Hidden(['password', 'approval_pin', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
@@ -181,6 +182,16 @@ class User extends Authenticatable implements FilamentUser
             : $this->business->accessProblem();
     }
 
+    public function hasApprovalPin(): bool
+    {
+        return filled($this->approval_pin);
+    }
+
+    public function matchesApprovalPin(string $pin): bool
+    {
+        return $this->hasApprovalPin() && Hash::check($pin, $this->approval_pin);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -190,6 +201,7 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'approval_pin' => 'hashed',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];

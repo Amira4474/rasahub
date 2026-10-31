@@ -49,6 +49,7 @@ Route::prefix('pos')->name('pos.')->group(function () {
     // Printed from the POS, and from an order in the admin, including by a
     // platform user in Super Impose. The controller checks who may see it.
     Route::get('orders/{order}/receipt', PosReceiptController::class)->name('receipt');
+    Route::get('refunds/{refund}/slip', [PosReceiptController::class, 'refund'])->name('refund-slip');
 
     Route::middleware(EnsurePosAccess::class)->group(function () {
         Route::get('terminal', [PosTerminalController::class, 'show'])->name('terminal');

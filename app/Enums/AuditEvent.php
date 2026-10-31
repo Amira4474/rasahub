@@ -17,6 +17,11 @@ enum AuditEvent: string
     case InvitationRevoked = 'invitation.revoked';
     case TenantRegistered = 'tenant.registered';
     case MigrationsRun = 'migrations.run';
+    case DiscountGiven = 'order.discount_given';
+    case ItemVoided = 'order.item_voided';
+    case OrderCancelled = 'order.cancelled';
+    case RefundIssued = 'order.refunded';
+    case CashDrawerDifference = 'shift.cash_difference';
 
     public function label(): string
     {
@@ -34,6 +39,11 @@ enum AuditEvent: string
             self::InvitationRevoked => 'Invitation revoked',
             self::TenantRegistered => 'Tenant registered',
             self::MigrationsRun => 'Migrations run',
+            self::DiscountGiven => 'Manual discount given',
+            self::ItemVoided => 'Item voided',
+            self::OrderCancelled => 'Order cancelled',
+            self::RefundIssued => 'Refund issued',
+            self::CashDrawerDifference => 'Cash drawer difference',
         };
     }
 }

@@ -6,6 +6,72 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.4.0 (2026-11-02)
+
+Correcting orders: discounts, voids, cancellations and refunds, with a
+supervisor's PIN where needed.
+
+### Added
+
+- **Discounts** on a line or on the whole order:
+  - **Presets** given with one tap, set up under Admin → Sales →
+    Discounts (a percentage or an amount, for one item or the order).
+  - **Typed discounts**, as a percentage or an amount, always with a
+    reason; no cap.
+  - Discounts come off before SST and service charge, follow the order as
+    it changes, and show on the order panel, the receipt and the admin.
+    One that would take the total below what is already paid is refused.
+- **Voids**: a line already sent to the kitchen can be voided with a
+  reason. It stays on the order crossed out and counts for nothing; the
+  kitchen display shows it struck through as "Void, do not make".
+- **Cancelling an order** with nothing paid, with a reason. The table is
+  freed.
+- **Refunds** of a paid order, for chosen items and quantities (each at its
+  share of what was paid, with SST, service charge and discounts) or for an
+  amount. Always in cash from the current shift's drawer, within 30 days of
+  payment (Restaurant settings → Refunds allowed for). A refund slip is
+  printed with its own number (BGR-RF000001) and a line for the customer's
+  signature. The order becomes Partly refunded or Refunded, and a line
+  cannot be refunded twice.
+- **Supervisor approval at the till**: when the person at the till may not
+  make a correction alone, the dialog asks for a Supervisor's, Manager's or
+  Owner's **approval PIN** (4 to 6 digits, set on the staff record, stored
+  hashed and unique in the business). Five wrong PINs pause approvals for a
+  minute.
+- **Audit log** entries for every typed discount, void, cancellation,
+  refund and cash drawer difference, with who approved it and why.
+- **Admin**: the order page shows discounts, voided lines, refunds and
+  cancellation with who approved them.
+- **Permissions** `discounts.apply`, `discounts.manual`,
+  `discounts.manage`, `items.void`, `orders.cancel` and `refunds.issue`.
+
+### Changed
+
+- **One Pay button** on the POS order panel, showing the amount to pay,
+  replaces the row of payment method buttons, so the item list keeps its
+  room. It opens a pop-up with the bill (subtotal, discounts, service
+  charge, SST, rounding, payments so far and what is left to pay) and the
+  payment methods; choosing one shows its amount, reference or QR code.
+  Send, Discount and Cancel share one row above it.
+- **Cash in the drawer** now subtracts cash refunded during the shift.
+- **Receipts** show discounts and refunds, and leave voided lines out.
+
+### Database
+
+- Central migration `2026_11_02_100000` adds `users.approval_pin`.
+- Tenant migration `2026_11_02_100000` adds `discount_presets`,
+  `order_discounts` and `refunds`, discount, refund and cancellation
+  columns on `orders`, discount, refund and void columns on
+  `order_items`, and `restaurant_settings.refund_days`.
+
+### Upgrading
+
+1. Run the central migration: `php artisan migrate`.
+2. Sync roles and permissions: `php artisan db:seed`.
+3. Migrate every tenant: `php artisan tenants:migrate`.
+4. Give each Supervisor, Manager and Owner an approval PIN on their staff
+   record.
+
 ## v0.3.0 (2026-11-01)
 
 The sales core: RasaHub takes orders and payments.

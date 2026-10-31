@@ -98,8 +98,8 @@ There is one global set, defined in `app/Enums/Role.php` and
 | Owner | Everything in the business: settings, payment methods, branches, floor plans, terminals, staff, the menu and sales, at every branch |
 | Manager | View the business, branches and staff; manage terminals, floor plans, the menu and customers; take orders and payments; at their branches |
 | Supervisor | View their branches, floor plans, terminals, the menu, orders, shifts and customers; mark products sold out; take orders and payments; at their branches |
-| Cashier | The POS: open and close shifts, take orders and payments, kitchen display |
-| Waiter | The POS: take orders (not payments), kitchen display |
+| Cashier | The POS: open and close shifts, take orders and payments, preset discounts, kitchen display. Typed discounts, voids of sent items, cancelling sent orders and refunds need a supervisor's PIN |
+| Waiter | The POS: take orders (not payments), kitchen display. Voids and cancelling sent orders need a supervisor's PIN |
 | Inventory | View the menu |
 | Kitchen | The POS kitchen display only: move orders from new to preparing, ready and served |
 
@@ -212,6 +212,26 @@ What it does and does not do:
 - It works for a tenant whose subscription is suspended or has ended, so
   that the tenant can still be helped.
 - Only Platform Super Admin and Platform Admin may start it.
+
+## Approval at the till
+
+Some corrections at the POS need someone senior. If the person at the till
+holds the permission, they just do it; otherwise the dialog asks for a
+**supervisor's PIN** in place, and the order records who approved it.
+
+| Correction | Permission | Held by |
+|---|---|---|
+| Typed (non-preset) discount | `discounts.manual` | Owner, Manager, Supervisor |
+| Void a line already sent to the kitchen | `items.void` | Owner, Manager, Supervisor |
+| Cancel an order with lines in the kitchen | `orders.cancel` | Owner, Manager, Supervisor |
+| Refund | `refunds.issue` | Owner, Manager |
+
+The PIN is 4 to 6 digits, set on the staff record in the admin, stored
+hashed, and unique within the business. Only an active member of the same
+business who holds the permission can approve; five wrong PINs lock the till
+user out of approvals for a minute. Every void, typed discount,
+cancellation, refund and cash drawer difference is written to the audit log
+with who did it, who approved it and why.
 
 ## Audit log
 

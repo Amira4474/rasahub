@@ -21,8 +21,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'branch_id', 'terminal_id', 'shift_id', 'business_date', 'number', 'number_label', 'receipt_number',
     'type', 'source', 'dining_table_id', 'table_label', 'guests', 'customer_id', 'status', 'payment_status', 'note',
+    'cancel_reason', 'cancelled_by', 'cancel_approved_by', 'cancelled_at',
     'sst_enabled', 'sst_rate', 'prices_include_sst', 'service_charge_rate', 'round_to_five_sen',
-    'subtotal', 'service_charge', 'sst', 'rounding', 'total', 'paid', 'opened_by', 'completed_at',
+    'subtotal', 'discount_total', 'service_charge', 'sst', 'rounding', 'total', 'paid', 'refunded', 'opened_by', 'completed_at',
 ])]
 class Order extends Model
 {
@@ -37,6 +38,8 @@ class Order extends Model
     protected $attributes = [
         'source' => 'pos',
         'subtotal' => '0.00',
+        'discount_total' => '0.00',
+        'refunded' => '0.00',
         'service_charge' => '0.00',
         'sst' => '0.00',
         'rounding' => '0.00',
@@ -105,6 +108,32 @@ class Order extends Model
     }
 
     /**
+     * Every discount on the order, on lines and on the whole order.
+     *
+     * @return HasMany<OrderDiscount, $this>
+     */
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(OrderDiscount::class)->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<Refund, $this>
+     */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class)->orderBy('id');
+    }
+
+    /**
+     * What can still be refunded: what was paid, less what was refunded.
+     */
+    public function refundable(): string
+    {
+        return bcsub($this->paid, $this->refunded, 2);
+    }
+
+    /**
      * @return HasMany<Payment, $this>
      */
     public function payments(): HasMany
@@ -170,6 +199,9 @@ class Order extends Model
             'service_charge_rate' => 'decimal:2',
             'round_to_five_sen' => 'boolean',
             'subtotal' => 'decimal:2',
+            'discount_total' => 'decimal:2',
+            'refunded' => 'decimal:2',
+            'cancelled_at' => 'datetime',
             'service_charge' => 'decimal:2',
             'sst' => 'decimal:2',
             'rounding' => 'decimal:2',

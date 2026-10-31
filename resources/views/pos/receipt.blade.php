@@ -54,18 +54,24 @@
             @endif
             <hr>
 
-            @foreach ($order->lines as $line)
-                <div class="row"><span>{{ $line->quantity }} {{ $line->name }}</span><span>{{ $money(bcadd($line->line_total, (string) $line->parts->sum('line_total'), 2)) }}</span></div>
+            @foreach ($order->lines->reject->isVoided() as $line)
+                <div class="row"><span>{{ $line->quantity }} {{ $line->name }}</span><span>{{ $money($line->grossTotal()) }}</span></div>
                 @foreach ($line->modifiers as $modifier)
                     <p class="muted">&nbsp;&nbsp;{{ $modifier->name }}</p>
                 @endforeach
                 @foreach ($line->parts as $part)
                     <p class="muted">&nbsp;&nbsp;- {{ $part->name }}</p>
                 @endforeach
+                @foreach ($line->discounts as $discount)
+                    <div class="row muted"><span>&nbsp;&nbsp;{{ $discount->label() }}</span><span>-{{ $money($discount->amount) }}</span></div>
+                @endforeach
             @endforeach
 
             <hr>
             <div class="row"><span>Subtotal</span><span>{{ $money($order->subtotal) }}</span></div>
+            @foreach ($order->discounts->whereNull('order_item_id') as $discount)
+                <div class="row"><span>{{ $discount->label() }}</span><span>-{{ $money($discount->amount) }}</span></div>
+            @endforeach
             @if ($order->service_charge !== '0.00')
                 <div class="row"><span>Service charge {{ rtrim(rtrim($order->service_charge_rate, '0'), '.') }}%</span><span>{{ $money($order->service_charge) }}</span></div>
             @endif
@@ -84,6 +90,13 @@
                     @if ($payment->change !== null && $payment->change !== '0.00')
                         <div class="row"><span>Change</span><span>{{ $money($payment->change) }}</span></div>
                     @endif
+                @endforeach
+            @endif
+
+            @if ($order->refunds->isNotEmpty())
+                <hr>
+                @foreach ($order->refunds as $refund)
+                    <div class="row"><span>Refund {{ $refund->number_label }}</span><span>-{{ $money($refund->amount) }}</span></div>
                 @endforeach
             @endif
 

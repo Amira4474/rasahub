@@ -36,9 +36,12 @@
                                 <ul class="mt-2 space-y-1 text-sm">
                                     @foreach ($kitchenOrder->lines as $line)
                                         @php($lineStatus = $line->kitchen_status)
-                                        @continue(! in_array($lineStatus, [KitchenStatus::Sent, KitchenStatus::Preparing, KitchenStatus::Ready], true))
-                                        <li @class(['opacity-50' => $lineStatus->value !== $stage])>
-                                            <span class="font-semibold">{{ $line->quantity }} × {{ $line->name }}</span>
+                                        @continue(! in_array($lineStatus, [KitchenStatus::Sent, KitchenStatus::Preparing, KitchenStatus::Ready, KitchenStatus::Voided], true))
+                                        <li @class(['opacity-50' => $lineStatus->value !== $stage && $lineStatus !== KitchenStatus::Voided, 'text-chili-600' => $lineStatus === KitchenStatus::Voided])>
+                                            <span @class(['font-semibold', 'line-through' => $lineStatus === KitchenStatus::Voided])>{{ $line->quantity }} × {{ $line->name }}</span>
+                                            @if ($lineStatus === KitchenStatus::Voided)
+                                                <span class="text-xs font-bold uppercase">Void, do not make</span>
+                                            @endif
                                             @if ($line->modifiers->isNotEmpty())
                                                 <span class="text-ink-500">· {{ $line->modifiers->pluck('name')->implode(', ') }}</span>
                                             @endif
