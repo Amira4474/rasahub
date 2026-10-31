@@ -44,6 +44,8 @@ class PlatformPanelProvider extends PanelProvider
                 PanelsRenderHook::FOOTER,
                 fn (): View => view('filament.footer', ['area' => 'Platform Console']),
             )
+            // The menu's sections, in this order, like the tenant admin's.
+            ->navigationGroups(['Tenants', 'Subscriptions', 'Administration'])
             ->discoverResources(in: app_path('Filament/Platform/Resources'), for: 'App\Filament\Platform\Resources')
             ->discoverPages(in: app_path('Filament/Platform/Pages'), for: 'App\Filament\Platform\Pages')
             ->pages([

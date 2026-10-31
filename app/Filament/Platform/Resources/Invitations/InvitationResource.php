@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 /**
  * Invitations to register a new tenant. Each one is a token chosen here
@@ -25,7 +26,9 @@ class InvitationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;
 
-    protected static ?int $navigationSort = 4;
+    protected static string|UnitEnum|null $navigationGroup = 'Tenants';
+
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $slug = 'invitations';
 

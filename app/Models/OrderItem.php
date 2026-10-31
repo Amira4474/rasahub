@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A line of an order, or a part of a set meal under its set's line. Names
  * and prices are copies taken at the moment of sale.
  */
-#[Fillable(['order_id', 'parent_id', 'product_id', 'name', 'unit_price', 'quantity', 'refunded_quantity', 'modifiers_total', 'line_total', 'discount_total', 'note', 'kitchen_status', 'sent_at', 'voided_at', 'void_reason', 'voided_by', 'void_approved_by'])]
+#[Fillable(['order_id', 'parent_id', 'product_id', 'station_id', 'station_name', 'ready_at', 'name', 'unit_price', 'quantity', 'refunded_quantity', 'modifiers_total', 'line_total', 'discount_total', 'note', 'kitchen_status', 'sent_at', 'voided_at', 'void_reason', 'voided_by', 'void_approved_by'])]
 class OrderItem extends Model
 {
     use HasUlids, UsesTenantDatabase;
@@ -110,6 +110,7 @@ class OrderItem extends Model
             'discount_total' => 'decimal:2',
             'refunded_quantity' => 'integer',
             'voided_at' => 'datetime',
+            'ready_at' => 'datetime',
             'kitchen_status' => KitchenStatus::class,
             'sent_at' => 'datetime',
         ];

@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * A menu category, such as Drinks. A category may sit inside one other
  * category (Drinks → Coffee), but no deeper.
  */
-#[Fillable(['parent_id', 'name', 'colour', 'sort_order', 'is_active'])]
+#[Fillable(['parent_id', 'station_id', 'name', 'colour', 'sort_order', 'is_active'])]
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
@@ -52,6 +52,16 @@ class Category extends Model
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');
+    }
+
+    /**
+     * Where its products are made, unless a product says otherwise.
+     *
+     * @return BelongsTo<Station, $this>
+     */
+    public function station(): BelongsTo
+    {
+        return $this->belongsTo(Station::class)->withTrashed();
     }
 
     /**

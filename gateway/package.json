@@ -1,0 +1,15 @@
+{
+  "name": "rasahub-print-gateway",
+  "version": "1.0.0",
+  "description": "Collects RasaHub print jobs for one branch and prints them on its network thermal printers.",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
+  }
+}

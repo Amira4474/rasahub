@@ -89,6 +89,11 @@ return [
             'plans' => ['growth', 'enterprise'],
             'live' => true,
         ],
+        'kitchen_printing' => [
+            'label' => 'Kitchen and bar tickets on network printers',
+            'plans' => ['starter', 'growth', 'enterprise'],
+            'live' => true,
+        ],
         'kitchen_display' => [
             'label' => 'Kitchen display',
             'plans' => ['growth', 'enterprise'],

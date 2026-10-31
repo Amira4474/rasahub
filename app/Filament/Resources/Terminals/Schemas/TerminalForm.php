@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Terminals\Schemas;
 
+use App\Enums\PrinterRole;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -35,6 +36,20 @@ class TerminalForm
                     ->alphaDash()
                     ->maxLength(32)
                     ->unique(modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('branch_id', $get('branch_id'))),
+                // Receipts print here through the print gateway; without one,
+                // the browser prints them.
+                Select::make('receipt_printer_id')
+                    ->label('Receipt printer')
+                    ->helperText('Leave empty to print receipts from the browser.')
+                    ->relationship(
+                        'receiptPrinter',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('branch_id', $get('branch_id'))
+                            ->where('role', PrinterRole::Receipt)
+                            ->where('is_active', true),
+                    )
+                    ->preload(),
                 Toggle::make('is_active')
                     ->default(true),
             ]);

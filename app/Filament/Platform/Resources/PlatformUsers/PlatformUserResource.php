@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class PlatformUserResource extends Resource
 {
@@ -22,7 +23,9 @@ class PlatformUserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
-    protected static ?int $navigationSort = 5;
+    protected static string|UnitEnum|null $navigationGroup = 'Administration';
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'name';
 

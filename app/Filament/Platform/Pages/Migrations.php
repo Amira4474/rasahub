@@ -18,6 +18,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Throwable;
+use UnitEnum;
 
 /**
  * Brings the databases up to date after an update to RasaHub: the central
@@ -29,7 +30,9 @@ class Migrations extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCircleStack;
 
-    protected static ?int $navigationSort = 7;
+    protected static string|UnitEnum|null $navigationGroup = 'Administration';
+
+    protected static ?int $navigationSort = 3;
 
     protected string $view = 'filament.platform.migrations';
 

@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 /**
  * Each tenant's plan, status and dates. A subscription is created with its
@@ -23,7 +24,9 @@ class SubscriptionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
-    protected static ?int $navigationSort = 2;
+    protected static string|UnitEnum|null $navigationGroup = 'Subscriptions';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

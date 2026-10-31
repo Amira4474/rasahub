@@ -111,6 +111,7 @@ enum Role: string
                 Permission::VoidItems,
                 Permission::CancelOrders,
                 Permission::IssueRefunds,
+                Permission::ManageKitchen,
             ],
             self::Manager => [
                 Permission::AccessAdminPanel,
@@ -139,6 +140,7 @@ enum Role: string
                 Permission::VoidItems,
                 Permission::CancelOrders,
                 Permission::IssueRefunds,
+                Permission::ManageKitchen,
             ],
             self::Supervisor => [
                 Permission::AccessAdminPanel,

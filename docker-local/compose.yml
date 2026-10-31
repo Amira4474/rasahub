@@ -71,6 +71,26 @@ services:
       # Tailwind scans framework and Filament views inside vendor/.
       - vendor:/var/www/html/vendor:ro
 
+  # The print gateway, for trying printing in development. Not started with
+  # the rest: `docker compose --profile gateway up gateway`. It writes each
+  # print job as text into gateway/prints/ instead of sending it to a printer.
+  gateway:
+    profiles: ["gateway"]
+    image: node:22.11.0-alpine3.20
+    container_name: rasahub-gateway
+    working_dir: /gateway
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    command: ["node", "src/index.js"]
+    environment:
+      RASAHUB_URL: http://web
+      RASAHUB_GATEWAY_KEY: ${GATEWAY_KEY:-}
+      OUTPUT: file
+      OUTPUT_DIR: /gateway/prints
+    volumes:
+      - ../gateway:/gateway
+    depends_on:
+      - web
+
 # Named volumes survive `docker compose down`.
 # `docker compose down -v` deletes them, including the database.
 volumes:

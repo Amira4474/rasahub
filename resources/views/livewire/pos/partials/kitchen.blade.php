@@ -17,6 +17,14 @@
             <p class="max-w-md text-cream-200/80">The kitchen display is part of the Growth and Enterprise plans. Ask the owner to contact RasaHub to change plan.</p>
         </div>
     @else
+        @if ($this->stations->isNotEmpty())
+            <div class="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2 text-sm">
+                <span class="text-cream-200/70">Station</span>
+                @foreach ([null => 'All', ...$this->stations->pluck('name', 'id')->all()] as $stationId => $stationName)
+                    <button type="button" wire:click="$set('kitchenStationId', {{ $stationId === '' || $stationId === null ? 'null' : $stationId }})" @class(['rounded-full px-3 py-1 font-semibold', 'bg-cream-50 text-ink-900' => $kitchenStationId == ($stationId ?: null), 'text-cream-100 hover:bg-white/10' => $kitchenStationId != ($stationId ?: null)])>{{ $stationName }}</button>
+                @endforeach
+            </div>
+        @endif
         <div class="grid min-h-0 flex-1 gap-3 p-3 md:grid-cols-3">
             @foreach ($stages as $stage => $info)
                 @php($orders = $this->kitchenOrders[$stage])
@@ -37,6 +45,7 @@
                                     @foreach ($kitchenOrder->lines as $line)
                                         @php($lineStatus = $line->kitchen_status)
                                         @continue(! in_array($lineStatus, [KitchenStatus::Sent, KitchenStatus::Preparing, KitchenStatus::Ready, KitchenStatus::Voided], true))
+                                        @continue($kitchenStationId && $line->station_id !== $kitchenStationId && $line->parts->every(fn ($part) => $part->station_id !== $kitchenStationId))
                                         <li @class(['opacity-50' => $lineStatus->value !== $stage && $lineStatus !== KitchenStatus::Voided, 'text-chili-600' => $lineStatus === KitchenStatus::Voided])>
                                             <span @class(['font-semibold', 'line-through' => $lineStatus === KitchenStatus::Voided])>{{ $line->quantity }} × {{ $line->name }}</span>
                                             @if ($lineStatus === KitchenStatus::Voided)

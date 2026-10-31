@@ -77,6 +77,9 @@ enum Permission: string
     case CancelOrders = 'orders.cancel';
     case IssueRefunds = 'refunds.issue';
 
+    // Stations, printers, kitchen screens and the print log.
+    case ManageKitchen = 'kitchen.manage';
+
     public function isPlatform(): bool
     {
         return in_array($this, [

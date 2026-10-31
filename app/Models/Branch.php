@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -16,8 +17,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'code', 'timezone', 'address', 'phone', 'service_charge_rate', 'service_charge_dine_in_only', 'business_day_starts_at', 'is_active'])]
+#[Hidden(['gateway_key'])]
+#[Fillable(['name', 'code', 'timezone', 'address', 'phone', 'service_charge_rate', 'service_charge_dine_in_only', 'business_day_starts_at', 'kitchen_amber_minutes', 'kitchen_red_minutes', 'is_active'])]
 /**
  * A branch is tenant data: it lives in its business's own database, so it
  * carries no business_id.
@@ -37,6 +40,8 @@ class Branch extends Model
         'service_charge_rate' => '0.00',
         'service_charge_dine_in_only' => true,
         'business_day_starts_at' => '04:00:00',
+        'kitchen_amber_minutes' => 10,
+        'kitchen_red_minutes' => 15,
     ];
 
     /**
@@ -55,6 +60,14 @@ class Branch extends Model
     public function terminals(): HasMany
     {
         return $this->hasMany(Terminal::class);
+    }
+
+    /**
+     * @return HasMany<KitchenScreen, $this>
+     */
+    public function kitchenScreens(): HasMany
+    {
+        return $this->hasMany(KitchenScreen::class);
     }
 
     /**
@@ -87,6 +100,26 @@ class Branch extends Model
             ->subHours($hours)
             ->subMinutes($minutes)
             ->startOfDay();
+    }
+
+    /**
+     * Give the branch a new print gateway key and return it. Only a hash is
+     * kept, so this is the one chance to read it; any earlier key stops
+     * working. The key names the business and the branch, so the gateway
+     * needs nothing else to find them.
+     */
+    public function issueGatewayKey(string $acronym): string
+    {
+        $secret = Str::random(40);
+
+        $this->forceFill(['gateway_key' => hash('sha256', $secret)])->save();
+
+        return strtolower($acronym).'.'.$this->ulid.'.'.$secret;
+    }
+
+    public function acceptsGatewaySecret(string $secret): bool
+    {
+        return $this->gateway_key !== null && hash_equals($this->gateway_key, hash('sha256', $secret));
     }
 
     public function chargesServiceCharge(): bool
@@ -134,6 +167,9 @@ class Branch extends Model
             'is_active' => 'boolean',
             'service_charge_rate' => 'decimal:2',
             'service_charge_dine_in_only' => 'boolean',
+            'kitchen_amber_minutes' => 'integer',
+            'kitchen_red_minutes' => 'integer',
+            'gateway_seen_at' => 'datetime',
         ];
     }
 }

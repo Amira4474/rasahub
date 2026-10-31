@@ -29,6 +29,7 @@ use App\Models\SetGroupItem;
 use App\Models\Shift;
 use App\Models\Terminal;
 use App\Models\User;
+use App\Printing\PrintQueue;
 use App\Support\Money;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
@@ -81,6 +82,8 @@ class Till
             'variance' => bcsub($counted, $expected, 2),
             'closing_note' => $note,
         ]);
+
+        app(PrintQueue::class)->shiftReport($shift);
 
         if (bccomp($shift->variance, '0', 2) !== 0) {
             app(Audit::class)->record(AuditEvent::CashDrawerDifference, properties: array_filter([
@@ -161,7 +164,7 @@ class Till
         $this->authorize($user, Permission::TakeOrders);
         $this->ensureOpen($order);
 
-        $product->loadMissing(['modifierGroups.modifiers', 'setGroups.items.product', 'branchSettings']);
+        $product->loadMissing(['modifierGroups.modifiers', 'setGroups.items.product.station', 'setGroups.items.product.category.station', 'setGroups.items.product.category.parent.station', 'branchSettings', 'station', 'category.station', 'category.parent.station']);
 
         if (! $product->isAvailableAt($order->branch_id)) {
             throw new SaleException("{$product->name} is not available.");
@@ -178,8 +181,12 @@ class Till
         $modifiersTotal = Money::sum($modifiers->pluck('price_delta'));
 
         return DB::connection($order->getConnectionName())->transaction(function () use ($order, $product, $quantity, $note, $modifiers, $parts, $unitPrice, $modifiersTotal): OrderItem {
+            $station = $product->effectiveStation();
+
             $item = $order->items()->create([
                 'product_id' => $product->id,
+                'station_id' => $station?->id,
+                'station_name' => $station?->name,
                 'name' => $product->name,
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
@@ -198,9 +205,13 @@ class Till
             }
 
             foreach ($parts as $part) {
+                $partStation = $part->product->effectiveStation();
+
                 $order->items()->create([
                     'parent_id' => $item->id,
                     'product_id' => $part->product_id,
+                    'station_id' => $partStation?->id,
+                    'station_name' => $partStation?->name,
                     'name' => $part->product->name,
                     'unit_price' => $part->extra_price,
                     'quantity' => $quantity,
@@ -265,14 +276,11 @@ class Till
         $this->authorize($user, Permission::TakeOrders);
         $this->ensureOpen($order);
 
-        $sent = $order->items()->where('kitchen_status', KitchenStatus::Pending)->update([
-            'kitchen_status' => KitchenStatus::Sent,
-            'sent_at' => now(),
-        ]);
-
-        if ($sent === 0 && ! $order->items()->exists()) {
+        if (! $order->items()->exists()) {
             throw new SaleException('Add something to the order first.');
         }
+
+        $sent = $this->markSent($order);
 
         if ($order->status === OrderStatus::Draft) {
             $order->update(['status' => OrderStatus::Confirmed]);
@@ -282,11 +290,62 @@ class Till
     }
 
     /**
-     * Move an order's kitchen lines from one stage to the next: sent to
-     * preparing, preparing to ready, ready to served. The order's own status
-     * follows while it is open.
+     * Send the lines not yet sent, and print a ticket for each station that
+     * has a printer. A set meal's own line is not printed: its parts are,
+     * each at its own station.
      */
-    public function advanceKitchen(Order $order, User $user, KitchenStatus $from): int
+    private function markSent(Order $order): int
+    {
+        $pending = $order->items()
+            ->where('kitchen_status', KitchenStatus::Pending)
+            ->with(['modifiers', 'parts'])
+            ->get();
+
+        if ($pending->isEmpty()) {
+            return 0;
+        }
+
+        $order->items()->whereKey($pending->modelKeys())->update([
+            'kitchen_status' => KitchenStatus::Sent,
+            'sent_at' => now(),
+        ]);
+
+        app(PrintQueue::class)->kitchenTickets($order, $pending->filter(fn (OrderItem $line): bool => $line->parts->isEmpty())->values());
+
+        return $pending->whereNull('parent_id')->count();
+    }
+
+    /**
+     * Mark one line ready, or not ready again, from a kitchen screen. When
+     * every line of an open order is ready, so is the order.
+     */
+    public function setItemReady(OrderItem $item, User $user, bool $ready = true): void
+    {
+        $this->authorize($user, Permission::UseKitchenDisplay);
+
+        $cooking = [KitchenStatus::Sent, KitchenStatus::Preparing];
+
+        if ($ready && ! in_array($item->kitchen_status, $cooking, true)) {
+            throw new SaleException("{$item->name} is not being made.");
+        }
+
+        if (! $ready && $item->kitchen_status !== KitchenStatus::Ready) {
+            throw new SaleException("{$item->name} is not ready.");
+        }
+
+        $item->update($ready
+            ? ['kitchen_status' => KitchenStatus::Ready, 'ready_at' => now()]
+            : ['kitchen_status' => KitchenStatus::Preparing, 'ready_at' => null]);
+
+        $this->followKitchen($item->order);
+    }
+
+    /**
+     * Move the lines of some stations (or all) from one stage to the next.
+     *
+     * @param  list<int>  $stationIds  Empty for every station.
+     */
+    public function advanceStations(Order $order, User $user, KitchenStatus $from, array $stationIds = []): int
     {
         $this->authorize($user, Permission::UseKitchenDisplay);
 
@@ -294,22 +353,70 @@ class Till
             KitchenStatus::Sent => KitchenStatus::Preparing,
             KitchenStatus::Preparing => KitchenStatus::Ready,
             KitchenStatus::Ready => KitchenStatus::Served,
+            KitchenStatus::Served => KitchenStatus::Ready,
             default => throw new SaleException('Those lines cannot be moved on.'),
         };
 
-        $moved = $order->items()->where('kitchen_status', $from)->update(['kitchen_status' => $to]);
+        $lines = $order->items()
+            ->whereDoesntHave('parts')
+            ->when($from === KitchenStatus::Sent && $to === KitchenStatus::Preparing, fn ($q) => $q->where('kitchen_status', KitchenStatus::Sent))
+            ->when($to === KitchenStatus::Ready && $from !== KitchenStatus::Served, fn ($q) => $q->whereIn('kitchen_status', [KitchenStatus::Sent, KitchenStatus::Preparing]))
+            ->when($from === KitchenStatus::Ready || $from === KitchenStatus::Served, fn ($q) => $q->where('kitchen_status', $from))
+            ->when($stationIds !== [], fn ($q) => $q->whereIn('station_id', $stationIds));
+
+        // MySQL cannot update a table while reading it in a subquery, so the
+        // lines are found first.
+        $ids = $lines->pluck('id');
+
+        $moved = $ids->isEmpty() ? 0 : OrderItem::whereKey($ids)->update(array_filter([
+            'kitchen_status' => $to,
+            'ready_at' => $to === KitchenStatus::Ready ? now() : null,
+        ], fn ($value) => $value !== null));
 
         if ($moved === 0) {
             throw new SaleException("Order {$order->number_label} has nothing at that stage.");
         }
 
-        if ($order->isOpen() && in_array($to, [KitchenStatus::Preparing, KitchenStatus::Ready], true)) {
-            $stillCooking = $order->items()->whereIn('kitchen_status', [KitchenStatus::Sent, KitchenStatus::Preparing])->exists();
-
-            $order->update(['status' => $to === KitchenStatus::Ready && ! $stillCooking ? OrderStatus::Ready : OrderStatus::Preparing]);
-        }
+        $this->followKitchen($order);
 
         return $moved;
+    }
+
+    /**
+     * The order's own status follows its lines while it is open: preparing
+     * while anything is still being made, ready once everything is.
+     */
+    private function followKitchen(Order $order): void
+    {
+        if (! $order->isOpen() || $order->status === OrderStatus::Draft) {
+            return;
+        }
+
+        $lines = $order->items()->whereDoesntHave('parts')->whereNotIn('kitchen_status', [KitchenStatus::Voided, KitchenStatus::Pending])->pluck('kitchen_status');
+
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $status = match (true) {
+            $lines->every(fn (KitchenStatus $s): bool => in_array($s, [KitchenStatus::Ready, KitchenStatus::Served], true)) => OrderStatus::Ready,
+            $lines->contains(fn (KitchenStatus $s): bool => $s !== KitchenStatus::Sent) => OrderStatus::Preparing,
+            default => OrderStatus::Confirmed,
+        };
+
+        if ($order->status !== $status) {
+            $order->update(['status' => $status]);
+        }
+    }
+
+    /**
+     * Move an order's kitchen lines from one stage to the next: sent to
+     * preparing, preparing to ready, ready to served. The order's own status
+     * follows while it is open.
+     */
+    public function advanceKitchen(Order $order, User $user, KitchenStatus $from): int
+    {
+        return $this->advanceStations($order, $user, $from);
     }
 
     /**
@@ -488,7 +595,7 @@ class Till
             ]);
 
             if ($settled) {
-                $this->complete($order);
+                $this->complete($order, $shift);
             }
 
             return $payment;
@@ -623,6 +730,10 @@ class Till
             $item->update($void);
             $item->parts()->update($void);
 
+            foreach ($item->parts()->get()->whenEmpty(fn ($none) => collect([$item->fresh()])) as $line) {
+                app(PrintQueue::class)->voidTicket($order, $line);
+            }
+
             OrderTotals::apply($order);
 
             if (bccomp($order->total, $order->paid, 2) < 0) {
@@ -746,6 +857,8 @@ class Till
                 'payment_status' => bccomp($refunded, $order->paid, 2) >= 0 ? PaymentStatus::Refunded : PaymentStatus::PartiallyRefunded,
             ]);
 
+            app(PrintQueue::class)->refundSlip($refund, $shift->terminal);
+
             $this->audit(AuditEvent::RefundIssued, $order, $user, $approver, [
                 'refund' => $refund->number_label,
                 'amount' => $value,
@@ -824,19 +937,18 @@ class Till
         ], fn ($value): bool => $value !== null));
     }
 
-    private function complete(Order $order): void
+    private function complete(Order $order, Shift $shift): void
     {
         // A takeaway paid before it was sent goes to the kitchen now.
-        $order->items()->where('kitchen_status', KitchenStatus::Pending)->update([
-            'kitchen_status' => KitchenStatus::Sent,
-            'sent_at' => now(),
-        ]);
+        $this->markSent($order);
 
         $order->update([
             'status' => OrderStatus::Completed,
             'receipt_number' => Sequence::next("receipt:{$order->branch_id}"),
             'completed_at' => now(),
         ]);
+
+        app(PrintQueue::class)->receipt($order, $shift->terminal);
     }
 
     /**

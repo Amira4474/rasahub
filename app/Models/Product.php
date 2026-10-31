@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Something on the menu: an item on its own, or a set meal made up of
  * other products. Its availability and price can differ per branch.
  */
-#[Fillable(['category_id', 'type', 'name', 'sku', 'description', 'image_path', 'price', 'sort_order', 'is_active'])]
+#[Fillable(['category_id', 'station_id', 'type', 'name', 'sku', 'description', 'image_path', 'price', 'sort_order', 'is_active'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -64,6 +64,23 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class)->withTrashed();
+    }
+
+    /**
+     * @return BelongsTo<Station, $this>
+     */
+    public function station(): BelongsTo
+    {
+        return $this->belongsTo(Station::class)->withTrashed();
+    }
+
+    /**
+     * Where the product is made: its own station, or its category's (or
+     * the parent category's).
+     */
+    public function effectiveStation(): ?Station
+    {
+        return $this->station ?? $this->category?->station ?? $this->category?->parent?->station;
     }
 
     /**

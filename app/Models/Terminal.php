@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * are different kinds of device with their own tables, so that each can be
  * counted and limited separately.
  */
-#[Fillable(['branch_id', 'name', 'code', 'is_active'])]
+#[Fillable(['branch_id', 'receipt_printer_id', 'name', 'code', 'is_active'])]
 class Terminal extends Model
 {
     /** @use HasFactory<TerminalFactory> */
@@ -63,6 +63,16 @@ class Terminal extends Model
     protected function visibleTo(Builder $query, User $user): void
     {
         $query->whereHas('branch', fn (Builder $branches) => $branches->visibleTo($user));
+    }
+
+    /**
+     * Where its receipts print, if anywhere but the browser.
+     *
+     * @return BelongsTo<Printer, $this>
+     */
+    public function receiptPrinter(): BelongsTo
+    {
+        return $this->belongsTo(Printer::class, 'receipt_printer_id');
     }
 
     /**

@@ -95,13 +95,13 @@ There is one global set, defined in `app/Enums/Role.php` and
 
 | Business role | Can |
 |---|---|
-| Owner | Everything in the business: settings, payment methods, branches, floor plans, terminals, staff, the menu and sales, at every branch |
-| Manager | View the business, branches and staff; manage terminals, floor plans, the menu and customers; take orders and payments; at their branches |
+| Owner | Everything in the business: settings, payment methods, branches, floor plans, terminals, staff, the menu, sales and the kitchen set-up (stations, printers, kitchen screens, print gateway keys), at every branch |
+| Manager | View the business, branches and staff; manage terminals, floor plans, the menu, customers and the kitchen set-up; take orders and payments; at their branches |
 | Supervisor | View their branches, floor plans, terminals, the menu, orders, shifts and customers; mark products sold out; take orders and payments; at their branches |
 | Cashier | The POS: open and close shifts, take orders and payments, preset discounts, kitchen display. Typed discounts, voids of sent items, cancelling sent orders and refunds need a supervisor's PIN |
 | Waiter | The POS: take orders (not payments), kitchen display. Voids and cancelling sent orders need a supervisor's PIN |
 | Inventory | View the menu |
-| Kitchen | The POS kitchen display only: move orders from new to preparing, ready and served |
+| Kitchen | The POS kitchen display, and kitchen screens (Growth and Enterprise): mark lines ready, serve and recall |
 
 Every permission check is answered in one place, the `Gate::before` rule in
 `AppServiceProvider`:
@@ -212,6 +212,18 @@ What it does and does not do:
 - It works for a tenant whose subscription is suspended or has ended, so
   that the tenant can still be helped.
 - Only Platform Super Admin and Platform Admin may start it.
+
+## Print gateway
+
+Printing on network printers goes through a small program at each branch,
+the print gateway (`gateway/`). It has no user account: it signs every
+request with its branch's **gateway key**, made in the admin (Branches →
+Print gateway key) by an Owner or Manager and shown once. The key reads
+`acronym.branch-ulid.secret`; only a SHA-256 hash of the secret is kept, so a
+new key stops the old one. Each request is answered inside that business's
+database and for that branch only, and the gateway can only see and report
+on its own branch's print jobs. Requests are limited to 240 a minute, and a
+business that is inactive, suspended or expired is refused.
 
 ## Approval at the till
 

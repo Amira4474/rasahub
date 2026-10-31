@@ -6,6 +6,75 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.5.0 (2026-11-03)
+
+The kitchen: stations, kitchen screens, network printers and the print
+gateway. A test suite four times faster.
+
+### Added
+
+- **Stations** (Admin → Kitchen → Stations), such as Kitchen, Bar and
+  Dessert. Each category sends its products to a station, and a product can
+  choose another. Order lines keep the station they were sent to.
+- **Kitchen screens** (Growth and Enterprise): a device of its own per
+  branch, showing chosen stations. Kitchen staff sign in to the POS on the
+  device and choose it at the device step. The screen shows each order with
+  a running timer that turns amber and then red (10 and 15 minutes by
+  default, set per branch), lines tapped ready one at a time or with "All
+  ready", a Ready column with "Served", "Recently served" to recall a bump
+  made by mistake, and an optional sound for new orders. It refreshes every
+  5 seconds.
+- **Printers** (Admin → Kitchen → Printers): network thermal printers per
+  branch, with role (receipts, kitchen or bar tickets), fixed IP address and
+  port, paper width (58 or 80 mm), the stations whose tickets they print,
+  and a Test print button. Each POS terminal can have a receipt printer.
+- **Printing**: Send to kitchen prints one ticket per station (order
+  number, table, time, items, options and notes, in large type); a paid
+  takeaway's tickets print when it is paid; a void prints a VOID ticket at
+  its station; receipts, refund slips and the end-of-shift report print at
+  the terminal's receipt printer. Without a printer, receipts still print
+  from the browser and the kitchen works from its screens.
+- **Print log** (Admin → Kitchen → Print log): every print job, its status
+  and error, with Reprint.
+- **Print gateway** (`gateway/`): a small Node.js program with no packages,
+  run at each branch, that collects the branch's print jobs every few
+  seconds, sends them to the printers in ESC/POS, and reports back. It can
+  write each job to a text file instead, for trying it without a printer
+  (`docker compose --profile gateway up gateway` in development). It signs
+  in with the branch's gateway key (Admin → Branches → Print gateway key,
+  shown once). Jobs not confirmed within two minutes are offered again, up
+  to five times.
+- **Station filter** on the POS kitchen display tab.
+- **Permission** `kitchen.manage` for the kitchen set-up pages (Owner,
+  Manager).
+
+### Changed
+
+- **The test suite runs in about 4 minutes instead of 15.** Test tenant
+  databases are kept and emptied for the next test instead of being dropped
+  and built again, and test businesses get acronyms in sequence (TA, TB, …)
+  so each test reuses the last one's databases. Real tenants are untouched.
+- **The POS device step** lists kitchen screens as well as POS terminals.
+- **The platform panel's menu is grouped** like the tenant admin's: Tenants
+  (Tenants, Invitations), Subscriptions (Subscriptions, Plans) and
+  Administration (Platform users, Audit log, Migrations).
+- **Plans page**: "Kitchen and bar tickets on network printers" is on every
+  plan; "Kitchen display" is marked as built.
+
+### Database
+
+- Tenant migration `2026_11_03_100000` adds `stations`, `printers`,
+  `printer_station`, `kitchen_screens` and `print_jobs`; a station on
+  categories, products and order lines; a receipt printer on terminals; and
+  kitchen timer and gateway key columns on branches.
+
+### Upgrading
+
+1. Sync roles and permissions: `php artisan db:seed`.
+2. Migrate every tenant: `php artisan tenants:migrate`.
+3. To print on network printers: add the printers, make the branch's
+   gateway key, and run the gateway at the branch (see `gateway/README.md`).
+
 ## v0.4.0 (2026-11-02)
 
 Correcting orders: discounts, voids, cancellations and refunds, with a

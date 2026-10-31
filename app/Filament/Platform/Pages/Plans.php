@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use UnitEnum;
 
 /**
  * What each subscription plan allows: its limits and its features, side by
@@ -17,7 +18,9 @@ class Plans extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?int $navigationSort = 3;
+    protected static string|UnitEnum|null $navigationGroup = 'Subscriptions';
+
+    protected static ?int $navigationSort = 2;
 
     protected string $view = 'filament.platform.plans';
 

@@ -31,7 +31,7 @@ and the version in [`VERSION.md`](../VERSION.md).
 | v0.2.0 | Restaurant Settings (tax, rounding, cut-off, SST number), tables and floor plan (done) |
 | v0.3.0 | Sales core: shifts, orders, payments, receipts, customers (done) |
 | v0.4.0 | Discounts, voids, cancellations, refunds (done) |
-| v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway |
+| v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway (done) |
 | v0.6.0 | Reporting |
 | v0.7.0 | QR ordering |
 
@@ -163,7 +163,23 @@ Decided on 2026-11-01:
 - Voids, refunds, cancellations, manual discounts and drawer differences are
   written to the audit log.
 
-## v0.5.0 Kitchen
+## v0.5.0 Kitchen (done)
+
+Decided on 2026-11-02:
+
+- **Print gateway:** a small Node.js program in the repository's
+  `gateway/` folder, with nothing to install but Node and a Docker setup.
+  It can print to a file instead of a printer, for development and demos.
+- **Receipts** print automatically on the terminal's receipt printer
+  through the gateway once one is set up; browser printing stays as the
+  fallback.
+- **Kitchen screens** are signed in to like the POS, and chosen at the
+  terminal step.
+- **Ready** is marked per item, with an "all ready" button per order.
+- **Late orders** turn amber at 10 minutes and red at 15, both branch
+  settings.
+- **Plans:** stations, printers and kitchen tickets on every plan; kitchen
+  screens on Growth and Enterprise.
 
 **Stations** (Kitchen, Bar, Dessert). Categories send their products to a
 station, and a product can override it.

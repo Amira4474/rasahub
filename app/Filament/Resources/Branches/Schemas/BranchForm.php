@@ -69,6 +69,23 @@ class BranchForm
                             ->default(true)
                             ->inline(false)
                             ->visible(fn (Get $get): bool => (float) $get('service_charge_rate') > 0),
+                        TextInput::make('kitchen_amber_minutes')
+                            ->label('Kitchen screen: amber after')
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(240)
+                            ->suffix('minutes')
+                            ->default(10)
+                            ->required(),
+                        TextInput::make('kitchen_red_minutes')
+                            ->label('Kitchen screen: red after')
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(240)
+                            ->gte('kitchen_amber_minutes')
+                            ->suffix('minutes')
+                            ->default(15)
+                            ->required(),
                         TimePicker::make('business_day_starts_at')
                             ->label('Business day starts at')
                             ->helperText('Sales before this time count towards the previous day. With 04:00, a sale at 01:30 on Saturday is in Friday\'s report.')

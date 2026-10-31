@@ -56,6 +56,11 @@ class ProductForm
                             ->maxValue(9999999)
                             ->prefix(fn (): string => ProductResource::currency())
                             ->required(),
+                        Select::make('station_id')
+                            ->label('Made at')
+                            ->helperText('Leave empty to use the category\'s station.')
+                            ->relationship('station', 'name', fn (Builder $query): Builder => $query->where('is_active', true))
+                            ->preload(),
                         TextInput::make('sku')
                             ->label('SKU')
                             ->helperText('Optional stock-keeping code.')

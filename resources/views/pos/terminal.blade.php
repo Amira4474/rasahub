@@ -1,10 +1,10 @@
 <x-pos.layout title="Choose terminal">
-    <x-pos.sign-in-card step="3" heading="Which terminal is this?">
+    <x-pos.sign-in-card step="3" heading="Which device is this?">
         <p class="mt-3 text-ink-700">Signed in as {{ auth()->user()->name }}.</p>
 
         @if ($branches->isEmpty())
             <p class="mt-6 rounded-2xl bg-cream-100 p-5 text-ink-900">
-                There is no POS terminal at your branches yet. Ask your manager to add one, or to assign you to a branch.
+                There is no POS terminal or kitchen screen at your branches yet. Ask your manager to add one, or to assign you to a branch.
             </p>
             <form method="POST" action="{{ route('pos.logout') }}" class="mt-6">
                 @csrf
@@ -20,9 +20,18 @@
                         <div class="mt-2 grid gap-2">
                             @foreach ($branch->terminals as $terminal)
                                 <label class="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-cream-300 px-5 py-3.5 has-[:checked]:border-chili-500 has-[:checked]:bg-chili-100">
-                                    <input type="radio" name="terminal" value="{{ $terminal->id }}" @checked($current === $terminal->id) required class="size-5 accent-chili-500">
+                                    <input type="radio" name="device" value="terminal:{{ $terminal->id }}" @checked($current === 'terminal:'.$terminal->id) required class="size-5 accent-chili-500">
+                                    @svg('heroicon-o-computer-desktop', 'size-5 text-ink-500')
                                     <span class="font-semibold text-ink-900">{{ $terminal->name }}</span>
                                     <span class="ml-auto text-sm tracking-widest text-ink-500">{{ $terminal->code }}</span>
+                                </label>
+                            @endforeach
+                            @foreach ($branch->kitchenScreens as $kitchenScreen)
+                                <label class="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-cream-300 px-5 py-3.5 has-[:checked]:border-chili-500 has-[:checked]:bg-chili-100">
+                                    <input type="radio" name="device" value="screen:{{ $kitchenScreen->id }}" @checked($current === 'screen:'.$kitchenScreen->id) required class="size-5 accent-chili-500">
+                                    @svg('heroicon-o-fire', 'size-5 text-ink-500')
+                                    <span class="font-semibold text-ink-900">{{ $kitchenScreen->name }}</span>
+                                    <span class="ml-auto text-sm text-ink-500">Kitchen screen</span>
                                 </label>
                             @endforeach
                         </div>

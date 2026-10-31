@@ -19,6 +19,7 @@ use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Shift;
+use App\Models\Station;
 use App\Models\Terminal;
 use App\Models\User;
 use App\Sales\ApprovalRequired;
@@ -49,6 +50,9 @@ class Register extends Component
 
     /** tables, menu or orders, within Sell */
     public string $tab = 'menu';
+
+    // Kitchen display: one station, or all of them.
+    public ?int $kitchenStationId = null;
 
     // Transactions.
     public string $transactionsDate = '';
@@ -308,7 +312,9 @@ class Register extends Component
     {
         $orders = Order::where('branch_id', $this->branch->id)
             ->where('status', '!=', OrderStatus::Cancelled)
-            ->whereHas('items', fn ($q) => $q->whereIn('kitchen_status', [KitchenStatus::Sent, KitchenStatus::Preparing, KitchenStatus::Ready]))
+            ->whereHas('items', fn ($q) => $q
+                ->whereIn('kitchen_status', [KitchenStatus::Sent, KitchenStatus::Preparing, KitchenStatus::Ready])
+                ->when($this->kitchenStationId, fn ($q, int $station) => $q->where('station_id', $station)))
             ->with(['diningTable', 'lines.parts', 'lines.modifiers'])
             ->oldest('id')
             ->get();
@@ -379,6 +385,15 @@ class Register extends Component
     public function presets(): Collection
     {
         return DiscountPreset::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
+    }
+
+    /**
+     * @return Collection<int, Station>
+     */
+    #[Computed]
+    public function stations(): Collection
+    {
+        return Station::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
     }
 
     public function kitchenIncluded(): bool
@@ -843,7 +858,7 @@ class Register extends Component
 
             $this->resetCorrections();
             $this->say("Refund {$refund->number_label}: give the customer ".$this->money($refund->amount).' in cash.', 'success');
-            $this->dispatch('print-receipt', url: route('pos.refund-slip', $refund->ulid));
+            $this->printOrOpen(route('pos.refund-slip', $refund->ulid), 'Refund slip sent to the printer.');
         });
     }
 
@@ -940,7 +955,7 @@ class Register extends Component
             $this->say(($done ? "Order {$this->order->number_label} paid in full." : "Payment taken for order {$this->order->number_label}. Balance: ".$this->money($this->order->balance()).'.').$change, 'success');
 
             if ($done) {
-                $this->dispatch('print-receipt', url: route('pos.receipt', $this->order->ulid));
+                $this->printOrOpen(route('pos.receipt', $this->order->ulid), 'Receipt sent to the printer.');
             }
         });
     }
@@ -948,6 +963,21 @@ class Register extends Component
     public function render()
     {
         return view('livewire.pos.register');
+    }
+
+    /**
+     * With a receipt printer on this terminal, the till has already queued
+     * the print for the gateway; without one, the browser prints it.
+     */
+    private function printOrOpen(string $url, string $note): void
+    {
+        if ($this->terminal->receiptPrinter()->where('is_active', true)->exists()) {
+            $this->message = trim($this->message.' '.$note);
+
+            return;
+        }
+
+        $this->dispatch('print-receipt', url: $url);
     }
 
     // ---------------------------------------------------------------------

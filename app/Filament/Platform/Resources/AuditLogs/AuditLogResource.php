@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 /**
  * A read-only view of the audit trail.
@@ -19,7 +20,9 @@ class AuditLogResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static ?int $navigationSort = 6;
+    protected static string|UnitEnum|null $navigationGroup = 'Administration';
+
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $slug = 'audit-log';
 

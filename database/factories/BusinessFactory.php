@@ -18,6 +18,32 @@ class BusinessFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    /**
+     * Businesses made by the factory are given acronyms in sequence: TA, TB,
+     * … TZ, TBA and so on. The test suite starts the sequence again for
+     * every test, so that each test's tenant databases have the same names
+     * as the last test's and can be reused.
+     */
+    private static int $sequence = 0;
+
+    public static function restartAcronyms(): void
+    {
+        self::$sequence = 0;
+    }
+
+    private static function nextAcronym(): string
+    {
+        $n = self::$sequence++;
+        $letters = '';
+
+        do {
+            $letters = chr(65 + $n % 26).$letters;
+            $n = intdiv($n, 26) - 1;
+        } while ($n >= 0);
+
+        return 'T'.$letters;
+    }
+
     public function definition(): array
     {
         $name = fake()->unique()->company();
@@ -25,7 +51,7 @@ class BusinessFactory extends Factory
         return [
             'name' => $name,
             'slug' => Str::slug($name),
-            'acronym' => strtoupper(fake()->unique()->lexify('??????')),
+            'acronym' => self::nextAcronym(),
             'currency' => 'MYR',
             'timezone' => 'UTC',
             'is_active' => true,

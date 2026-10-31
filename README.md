@@ -66,6 +66,7 @@ subscriptions, invitations and migrations are described in
 ## Documents
 
 - [docs/ACCESS.md](docs/ACCESS.md): how access, tenancy, Super Impose, subscriptions, invitations and migrations work.
+- [gateway/README.md](gateway/README.md): the print gateway that runs at each branch.
 - [docs/CHANGELOG.md](docs/CHANGELOG.md): what changed in each version. The current version is in [VERSION.md](VERSION.md).
 - [docs/SYSTEMCONCEPT.md](docs/SYSTEMCONCEPT.md): the original system concept.
 - [docs/DifferentAccess.md](docs/DifferentAccess.md): the access requirements.

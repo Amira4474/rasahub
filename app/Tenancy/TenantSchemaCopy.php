@@ -14,8 +14,14 @@ use Illuminate\Database\Connection;
  * and later databases are created straight from those definitions, with
  * the migrations recorded as run.
  *
+ * A database it made is also kept for the next test that wants the same
+ * name, and emptied rather than dropped and built again, which is faster
+ * still. One is only reused if this process made it and its migrations
+ * match the current ones exactly.
+ *
  * Switched on by TENANT_SCHEMA_COPY in phpunit.xml. Everywhere else every
- * tenant database is built by its migrations.
+ * tenant database is built by its migrations, and an existing database is
+ * never reused.
  */
 class TenantSchemaCopy
 {
@@ -26,6 +32,13 @@ class TenantSchemaCopy
      * @var array<string, array{tables: list<string>, migrations: list<array<string, mixed>>}>
      */
     private static array $copies = [];
+
+    /**
+     * Databases this process built, which it may therefore empty and reuse.
+     *
+     * @var array<string, true>
+     */
+    private static array $built = [];
 
     public static function enabled(): bool
     {
@@ -55,6 +68,57 @@ class TenantSchemaCopy
         }
 
         $tenant->table('migrations')->insert($copy['migrations']);
+
+        return true;
+    }
+
+    public static function remember(string $database): void
+    {
+        self::$built[$database] = true;
+    }
+
+    public static function built(string $database): bool
+    {
+        return isset(self::$built[$database]);
+    }
+
+    /**
+     * Empty the connected database for its next use, if it is one this
+     * process built from the current migrations. Rows are deleted rather
+     * than tables truncated: MySQL rebuilds a table to truncate it, which is
+     * as slow as building it. So record numbers carry on from the last test
+     * instead of starting again at 1.
+     */
+    public static function reuse(Connection $tenant, string $database): bool
+    {
+        $copy = self::$copies[self::key()] ?? null;
+
+        if ($copy === null || ! self::built($database)) {
+            return false;
+        }
+
+        $ran = $tenant->table('migrations')->orderBy('id')->pluck('migration')->all();
+
+        if ($ran !== array_column($copy['migrations'], 'migration')) {
+            return false;
+        }
+
+        $tables = array_map(
+            fn (object $row): string => array_values((array) $row)[0],
+            $tenant->select('SHOW TABLES'),
+        );
+
+        $tenant->unprepared('SET FOREIGN_KEY_CHECKS=0');
+
+        try {
+            foreach ($tables as $table) {
+                if ($table !== 'migrations' && $tenant->table($table)->limit(1)->exists()) {
+                    $tenant->table($table)->delete();
+                }
+            }
+        } finally {
+            $tenant->unprepared('SET FOREIGN_KEY_CHECKS=1');
+        }
 
         return true;
     }

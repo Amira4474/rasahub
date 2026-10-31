@@ -32,3 +32,6 @@ Thumbs.db
 /public/css/filament
 /public/fonts/filament
 /public/js/filament
+
+# Print gateway output when trying it without a printer.
+/gateway/prints/

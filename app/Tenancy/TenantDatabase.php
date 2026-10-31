@@ -140,7 +140,16 @@ class TenantDatabase
         $name = $this->nameFor($business);
 
         if ($this->exists($business)) {
-            throw new RuntimeException("The tenant database [{$name}] already exists. Remove it before creating this tenant.");
+            // The test suite empties and reuses databases it built itself.
+            if (TenantSchemaCopy::enabled() && TenantSchemaCopy::built($name)) {
+                if ($this->onTenant($business, fn (Connection $tenant): bool => TenantSchemaCopy::reuse($tenant, $name))) {
+                    return;
+                }
+
+                $this->drop($business);
+            } else {
+                throw new RuntimeException("The tenant database [{$name}] already exists. Remove it before creating this tenant.");
+            }
         }
 
         $this->onServer(fn (Connection $server): bool => $server->statement(
@@ -176,6 +185,8 @@ class TenantDatabase
 
             $this->onTenant($business, fn (Connection $tenant) => TenantSchemaCopy::keep($tenant));
         }
+
+        TenantSchemaCopy::remember($this->nameFor($business));
     }
 
     /**

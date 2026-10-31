@@ -35,6 +35,11 @@ class CategoryForm
                     ->disabled(fn (?Category $record): bool => $record?->children()->exists() ?? false)
                     ->searchable()
                     ->preload(),
+                Select::make('station_id')
+                    ->label('Made at')
+                    ->helperText('The station its products go to: on kitchen screens and tickets. A product can choose another.')
+                    ->relationship('station', 'name', fn (Builder $query): Builder => $query->where('is_active', true))
+                    ->preload(),
                 ColorPicker::make('colour')
                     ->helperText('The colour of its buttons on the POS.')
                     ->regex('/^#[0-9A-Fa-f]{6}$/'),
