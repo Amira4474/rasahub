@@ -32,7 +32,7 @@ and the version in [`VERSION.md`](../VERSION.md).
 | v0.3.0 | Sales core: shifts, orders, payments, receipts, customers (done) |
 | v0.4.0 | Discounts, voids, cancellations, refunds (done) |
 | v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway (done) |
-| v0.6.0 | Reporting |
+| v0.6.0 | Reporting (done) |
 | v0.7.0 | QR ordering |
 
 **Kept in view** (not scheduled): inventory, offline mode, MyInvois
@@ -201,7 +201,19 @@ branch network collects them and sends them to the printers, because a
 browser cannot reach a network printer directly. A "Test print" button
 checks each printer.
 
-## v0.6.0 Reporting
+## v0.6.0 Reporting (done)
+
+Decided on 2026-11-03:
+
+- **Refunds** count on the business day they were given, matching the cash
+  drawer and shift reports.
+- **Who sees reports:** Owners every branch, Managers their own branches,
+  Supervisors shift reports only; Cashiers and Waiters none.
+- **Downloads:** Excel (.xlsx, written by RasaHub itself) and PDF (with the
+  dompdf library).
+- **Plans:** every report for the restaurant's own branches on every plan;
+  Branches compared on Growth and above; the Group report on Enterprise.
+- **The platform panel** shows no tenant's sales figures.
 
 | Report | Plan |
 |---|---|

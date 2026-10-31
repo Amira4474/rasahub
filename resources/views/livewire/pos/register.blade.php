@@ -766,6 +766,7 @@
                 <div class="mt-6 flex flex-wrap justify-end gap-2">
                     <button type="button" wire:click="$set('shiftPanel', false)" class="{{ $light }}">Back</button>
                     <a href="{{ route('pos.terminal', ['switch' => 1]) }}" class="{{ $light }}">Switch terminal</a>
+                    <button type="button" wire:click="printXReport" class="{{ $light }}" title="The shift's figures so far, without closing it">Print X report</button>
                     @if ($mayRunShift)
                         <button type="button" wire:click="$set('closingShift', true)" class="{{ $primary }}">Close shift</button>
                     @endif

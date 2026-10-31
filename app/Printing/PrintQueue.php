@@ -102,7 +102,7 @@ class PrintQueue
             return false;
         }
 
-        $this->queue($printer, 'shift_report', Tickets::shift($shift), $shift->terminal->name);
+        $this->queue($printer, 'shift_report', Tickets::shift($shift), ($shift->isOpen() ? 'X ' : 'Z ').$shift->terminal->name);
 
         return true;
     }

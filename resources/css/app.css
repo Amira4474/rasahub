@@ -86,3 +86,16 @@
         animation: none;
     }
 }
+
+/*
+| Scrollbars are hidden everywhere; scrolling still works with the mouse
+| wheel, trackpad, touch and keyboard. The panels get the same rule from
+| resources/views/filament/hidden-scrollbars.blade.php.
+*/
+* {
+    scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+    display: none;
+}

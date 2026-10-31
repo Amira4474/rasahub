@@ -6,6 +6,7 @@ use App\Http\Controllers\Pos\PosLoginController;
 use App\Http\Controllers\Pos\PosReceiptController;
 use App\Http\Controllers\Pos\PosTerminalController;
 use App\Http\Controllers\Registration\TenantRegistrationController;
+use App\Http\Controllers\ReportExportController;
 use App\Http\Middleware\EnsurePosAccess;
 use App\Http\Middleware\EnsurePosTerminal;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,11 @@ Route::prefix('register')->name('register.')->group(function () {
 
 Route::post('/super-impose/exit', ExitSuperImposeController::class)->name('super-impose.exit');
 
+// Reports as Excel or PDF, for the tenant admin. The controller checks who may.
+Route::get('/admin/reports/{report}.{format}', ReportExportController::class)
+    ->where(['report' => '[a-z]+', 'format' => 'xlsx|pdf'])
+    ->name('reports.export');
+
 Route::prefix('pos')->name('pos.')->group(function () {
     Route::get('login', [PosLoginController::class, 'showCompany'])->name('login');
     Route::get('login/credentials', [PosLoginController::class, 'showCredentials'])->name('login.credentials');
@@ -50,6 +56,7 @@ Route::prefix('pos')->name('pos.')->group(function () {
     // platform user in Super Impose. The controller checks who may see it.
     Route::get('orders/{order}/receipt', PosReceiptController::class)->name('receipt');
     Route::get('refunds/{refund}/slip', [PosReceiptController::class, 'refund'])->name('refund-slip');
+    Route::get('shifts/{shift}/report', [PosReceiptController::class, 'shift'])->name('shift-report');
 
     Route::middleware(EnsurePosAccess::class)->group(function () {
         Route::get('terminal', [PosTerminalController::class, 'show'])->name('terminal');

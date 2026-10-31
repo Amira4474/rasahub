@@ -208,12 +208,16 @@ class Tickets
         $timezone = $shift->branch->effectiveTimezone();
         $name = fn (?int $id): string => $id === null ? '' : (User::acrossBusinesses()->find($id)?->name ?? 'Removed user');
 
+        $open = $shift->isOpen();
+        $expected = $shift->expected_cash ?? $shift->expectedCash();
+
         $document = (new Document)
-            ->center('SHIFT REPORT', large: true, bold: true)
+            ->center($open ? 'X REPORT' : 'SHIFT REPORT (Z)', large: true, bold: true)
+            ->center($open ? 'Shift still open' : 'Shift closed')
             ->center($shift->branch->name.' · '.$shift->terminal->name)
             ->rule()
             ->row('Opened', $shift->opened_at->timezone($timezone)->format('d/m H:i').' '.$name($shift->opened_by))
-            ->row('Closed', $shift->closed_at?->timezone($timezone)->format('d/m H:i').' '.$name($shift->closed_by))
+            ->row($open ? 'Printed' : 'Closed', $open ? now()->timezone($timezone)->format('d/m H:i') : $shift->closed_at->timezone($timezone)->format('d/m H:i').' '.$name($shift->closed_by))
             ->rule();
 
         foreach ($shift->payments()->get()->groupBy('method_name') as $method => $payments) {
@@ -226,14 +230,17 @@ class Tickets
             $document->row('Cash refunds ('.$refunds->count().')', '-'.$money((string) $refunds->sum('amount')));
         }
 
-        return $document->rule()
+        $document->rule()
             ->row('Opening float', $money($shift->opening_float))
-            ->row('Cash expected', $money($shift->expected_cash), bold: true)
-            ->row('Cash counted', $money($shift->counted_cash), bold: true)
-            ->row('Difference', $money($shift->variance), bold: true)
-            ->text($shift->closing_note ? 'Note: '.$shift->closing_note : '')
-            ->feed(2)
-            ->cut();
+            ->row('Cash expected', $money($expected), bold: true);
+
+        if (! $open) {
+            $document->row('Cash counted', $money($shift->counted_cash), bold: true)
+                ->row('Difference', $money($shift->variance), bold: true)
+                ->text($shift->closing_note ? 'Note: '.$shift->closing_note : '');
+        }
+
+        return $document->feed(2)->cut();
     }
 
     public static function test(Printer $printer): Document

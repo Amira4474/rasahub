@@ -37,6 +37,10 @@ class PlatformPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->renderHook(
+                PanelsRenderHook::STYLES_AFTER,
+                fn (): View => view('filament.hidden-scrollbars'),
+            )
+            ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
                 fn (): View => view('filament.back-to-website'),
             )

@@ -22,6 +22,7 @@ use App\Models\Shift;
 use App\Models\Station;
 use App\Models\Terminal;
 use App\Models\User;
+use App\Printing\PrintQueue;
 use App\Sales\ApprovalRequired;
 use App\Sales\SaleException;
 use App\Sales\Till;
@@ -860,6 +861,25 @@ class Register extends Component
             $this->say("Refund {$refund->number_label}: give the customer ".$this->money($refund->amount).' in cash.', 'success');
             $this->printOrOpen(route('pos.refund-slip', $refund->ulid), 'Refund slip sent to the printer.');
         });
+    }
+
+    /**
+     * The shift's figures so far, without closing it: at the receipt
+     * printer if there is one, otherwise from the browser.
+     */
+    public function printXReport(): void
+    {
+        if ($this->shift === null) {
+            return;
+        }
+
+        if (app(PrintQueue::class)->shiftReport($this->shift)) {
+            $this->say('X report sent to the printer.', 'success');
+
+            return;
+        }
+
+        $this->dispatch('print-receipt', url: route('pos.shift-report', $this->shift->ulid));
     }
 
     public function closeCorrection(): void

@@ -80,6 +80,10 @@ enum Permission: string
     // Stations, printers, kitchen screens and the print log.
     case ManageKitchen = 'kitchen.manage';
 
+    // Reports.
+    case ViewReports = 'reports.view';
+    case ViewShiftReports = 'reports.shifts';
+
     public function isPlatform(): bool
     {
         return in_array($this, [

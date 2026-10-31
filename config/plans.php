@@ -75,9 +75,9 @@ return [
             'live' => true,
         ],
         'daily_sales_summary' => [
-            'label' => 'Daily sales summary',
+            'label' => 'Sales reports, with Excel and PDF downloads',
             'plans' => ['starter', 'growth', 'enterprise'],
-            'live' => false,
+            'live' => true,
         ],
         'branch_staff_assignment' => [
             'label' => 'Roles and branch assignment for staff',
@@ -115,9 +115,9 @@ return [
             'live' => true,
         ],
         'branch_reports' => [
-            'label' => 'Per-branch reports',
+            'label' => 'Branches compared',
             'plans' => ['growth', 'enterprise'],
-            'live' => false,
+            'live' => true,
         ],
         'inventory' => [
             'label' => 'Inventory across outlets',
@@ -125,9 +125,9 @@ return [
             'live' => false,
         ],
         'group_reporting' => [
-            'label' => 'Consolidated group reporting',
+            'label' => 'Consolidated group report',
             'plans' => ['enterprise'],
-            'live' => false,
+            'live' => true,
         ],
         'offline_mode' => [
             'label' => 'Offline mode on every terminal',

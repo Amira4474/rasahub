@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\RestaurantSetting;
+use App\Models\Shift;
 use App\Models\User;
+use App\Printing\Tickets;
 use App\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +42,27 @@ class PosReceiptController extends Controller
             'business' => app(TenantContext::class)->business(),
             'logo' => $settings->receipt_logo_path ? Storage::disk('public')->url($settings->receipt_logo_path) : null,
             'timezone' => $order->branch->effectiveTimezone(),
+        ]);
+    }
+
+    /**
+     * A shift's report: an X report while it is open, its Z report once
+     * closed. Printed through the browser, laid out as on a receipt printer.
+     */
+    public function shift(Request $request, string $shift): View
+    {
+        $user = $request->user();
+
+        abort_if($user === null, 403);
+        abort_unless($user->can(Permission::ManageShifts) || $user->can(Permission::ViewShiftReports), 403);
+
+        $shift = Shift::where('ulid', $shift)->with(['branch', 'terminal'])->firstOrFail();
+
+        abort_unless($user->canAccessBranch($shift->branch), 404);
+
+        return view('pos.document', [
+            'title' => ($shift->isOpen() ? 'X report' : 'Shift report').' · '.$shift->terminal->name,
+            'document' => Tickets::shift($shift)->toArray(),
         ]);
     }
 

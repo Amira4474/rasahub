@@ -112,6 +112,8 @@ enum Role: string
                 Permission::CancelOrders,
                 Permission::IssueRefunds,
                 Permission::ManageKitchen,
+                Permission::ViewReports,
+                Permission::ViewShiftReports,
             ],
             self::Manager => [
                 Permission::AccessAdminPanel,
@@ -141,6 +143,8 @@ enum Role: string
                 Permission::CancelOrders,
                 Permission::IssueRefunds,
                 Permission::ManageKitchen,
+                Permission::ViewReports,
+                Permission::ViewShiftReports,
             ],
             self::Supervisor => [
                 Permission::AccessAdminPanel,
@@ -160,6 +164,7 @@ enum Role: string
                 Permission::ManualDiscounts,
                 Permission::VoidItems,
                 Permission::CancelOrders,
+                Permission::ViewShiftReports,
             ],
             self::Cashier => [
                 Permission::AccessPos,

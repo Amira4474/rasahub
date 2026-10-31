@@ -6,6 +6,75 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.6.0 (2026-11-03)
+
+Reporting: twelve reports with Excel and PDF downloads, a sales dashboard
+and the X report.
+
+### Added
+
+- **Reports** in the tenant admin, on a full-width page: the report is
+  chosen from a list above it, for a range of business days and a branch
+  (or all the user's branches), with quick ranges (today,
+  yesterday, this week, this month, last month), headline figures, a chart
+  where it helps, and a table with totals:
+  - **Sales summary**: orders, guests, gross sales, discounts, service
+    charge, SST, rounding, takings, refunds and net takings, day by day.
+  - **Sales by product**, **by category** and **modifiers** (times chosen
+    and what each option added).
+  - **Sales by hour**, in each branch's own time.
+  - **Sales by staff**: orders and takings, discounts given, lines voided
+    and refunds given.
+  - **Payments** by method, with cash refunds, for reconciling.
+  - **Discounts, voids and refunds**, each with who did it, who approved it
+    and why.
+  - **SST** collected and the taxable amount, day by day.
+  - **Shifts**: float, takings, expected and counted cash, difference.
+  - **Branches compared** (Growth and Enterprise) and the **Group report**
+    (Enterprise).
+- **Downloads as Excel and PDF.** The .xlsx files are written by RasaHub
+  itself, with real numbers Excel can add up, frozen headings and totals;
+  the PDFs are made with dompdf, landscape for wide reports.
+- **Dashboard**: net takings, orders and average spend today against the
+  same day last week, the last 30 days' net takings, and today's best
+  sellers.
+- **X report** on the POS (shift pop-up → Print X report): the shift's
+  figures so far without closing it, at the receipt printer or from the
+  browser. The closing report is now headed "Shift report (Z)".
+- **Permissions** `reports.view` (Owner, Manager) and `reports.shifts`
+  (Owner, Manager, Supervisor).
+
+### How the figures are worked out
+
+- Sales are paid orders only, by the business day they belong to, using
+  the names, prices and tax each order kept. Cancelled and open orders are
+  left out.
+- Refunds count on the business day they were given, as in the cash drawer.
+- "Today", the quick ranges and the dashboard use the branch's own business
+  day (its timezone and the time its day starts), not the server's calendar
+  day, which runs in UTC.
+- Owners see every branch, Managers their own branches, Supervisors shift
+  reports only.
+
+### Changed
+
+- **Scrollbars are hidden** everywhere (website, POS, tenant admin and
+  platform panels). Scrolling still works with the mouse wheel, trackpad,
+  touch and keyboard.
+- **Plans page**: "Sales reports, with Excel and PDF downloads",
+  "Branches compared" and "Consolidated group report" are marked as built.
+- **Security updates**: Livewire 4.4.8 (an authorization fix) and Symfony
+  8.1.10 components (including symfony/mime).
+
+### Packages
+
+- Adds `barryvdh/laravel-dompdf` (with `dompdf/dompdf`) for PDF reports.
+
+### Upgrading
+
+1. `composer install`, then sync roles and permissions: `php artisan db:seed`.
+2. No database changes.
+
 ## v0.5.0 (2026-11-03)
 
 The kitchen: stations, kitchen screens, network printers and the print

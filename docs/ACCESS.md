@@ -95,9 +95,9 @@ There is one global set, defined in `app/Enums/Role.php` and
 
 | Business role | Can |
 |---|---|
-| Owner | Everything in the business: settings, payment methods, branches, floor plans, terminals, staff, the menu, sales and the kitchen set-up (stations, printers, kitchen screens, print gateway keys), at every branch |
-| Manager | View the business, branches and staff; manage terminals, floor plans, the menu, customers and the kitchen set-up; take orders and payments; at their branches |
-| Supervisor | View their branches, floor plans, terminals, the menu, orders, shifts and customers; mark products sold out; take orders and payments; at their branches |
+| Owner | Everything in the business: settings, payment methods, branches, floor plans, terminals, staff, the menu, sales and the kitchen set-up (stations, printers, kitchen screens, print gateway keys) and every report, at every branch |
+| Manager | View the business, branches and staff; manage terminals, floor plans, the menu, customers and the kitchen set-up; take orders and payments; see every report; at their branches |
+| Supervisor | View their branches, floor plans, terminals, the menu, orders, shifts and customers; mark products sold out; take orders and payments; shift reports only; at their branches |
 | Cashier | The POS: open and close shifts, take orders and payments, preset discounts, kitchen display. Typed discounts, voids of sent items, cancelling sent orders and refunds need a supervisor's PIN |
 | Waiter | The POS: take orders (not payments), kitchen display. Voids and cancelling sent orders need a supervisor's PIN |
 | Inventory | View the menu |
