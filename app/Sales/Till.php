@@ -11,6 +11,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\PaymentStatus;
 use App\Enums\Permission;
+use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\DiningTable;
 use App\Models\DiscountPreset;
@@ -119,6 +120,16 @@ class Till
             }
         }
 
+        return $this->createOrder($branch, $terminal, $user, $type, $table, $guests);
+    }
+
+    /**
+     * A new order with the restaurant's tax settings and the branch's service
+     * charge as they are now, and its number for the branch's business day.
+     * No permission is checked here: the callers do.
+     */
+    public function createOrder(Branch $branch, ?Terminal $terminal, ?User $user, OrderType $type, ?DiningTable $table = null, ?int $guests = null, string $source = 'pos', OrderStatus $status = OrderStatus::Draft): Order
+    {
         $settings = RestaurantSetting::current();
         $businessDate = $branch->businessDateFor(now());
         $number = Sequence::next("order:{$branch->id}:{$businessDate->toDateString()}");
@@ -128,28 +139,36 @@ class Till
 
         return Order::create([
             'branch_id' => $branch->id,
-            'terminal_id' => $terminal->id,
-            'shift_id' => Shift::openOn($terminal)?->id,
+            'terminal_id' => $terminal?->id,
+            'shift_id' => $terminal ? Shift::openOn($terminal)?->id : null,
+            'source' => $source,
             'business_date' => $businessDate->toDateString(),
             'number' => $number,
             'number_label' => $branch->code.'-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT),
             'type' => $type,
             'dining_table_id' => $type === OrderType::DineIn ? $table?->id : null,
             'guests' => $type === OrderType::DineIn ? $guests : null,
-            'status' => OrderStatus::Draft,
+            'status' => $status,
             'payment_status' => PaymentStatus::Unpaid,
             'sst_enabled' => $settings->sst_enabled,
             'sst_rate' => $settings->sst_rate,
             'prices_include_sst' => $settings->prices_include_sst,
             'service_charge_rate' => $chargesService ? $branch->service_charge_rate : Money::ZERO,
             'round_to_five_sen' => $settings->round_to_five_sen,
-            'opened_by' => $user->id,
+            'opened_by' => $user?->id,
         ]);
     }
 
+    /**
+     * The table's open order. A QR order still waiting for staff does not
+     * count: it joins this order when it is confirmed.
+     */
     public function openOrderAt(DiningTable $table): ?Order
     {
-        return Order::open()->where('dining_table_id', $table->id)->first();
+        return Order::open()
+            ->where('dining_table_id', $table->id)
+            ->where('status', '!=', OrderStatus::Pending)
+            ->first();
     }
 
     /**
@@ -162,6 +181,19 @@ class Till
     public function addItem(Order $order, User $user, Product $product, int $quantity = 1, array $modifierIds = [], array $setChoices = [], ?string $note = null): OrderItem
     {
         $this->authorize($user, Permission::TakeOrders);
+
+        return $this->addLine($order, $product, $quantity, $modifierIds, $setChoices, $note);
+    }
+
+    /**
+     * Add a line, checking the product is on sale and the choices allowed,
+     * at the branch's price. No permission is checked here: the callers do.
+     *
+     * @param  list<int>  $modifierIds
+     * @param  array<int, list<int>>  $setChoices
+     */
+    public function addLine(Order $order, Product $product, int $quantity = 1, array $modifierIds = [], array $setChoices = [], ?string $note = null): OrderItem
+    {
         $this->ensureOpen($order);
 
         $product->loadMissing(['modifierGroups.modifiers', 'setGroups.items.product.station', 'setGroups.items.product.category.station', 'setGroups.items.product.category.parent.station', 'branchSettings', 'station', 'category.station', 'category.parent.station']);
@@ -420,6 +452,75 @@ class Till
     }
 
     /**
+     * Confirm a QR order: it joins the table's open order if there is one,
+     * or becomes it, and goes to the kitchen. With no user, the branch
+     * confirmed it automatically.
+     */
+    public function confirmQrOrder(Order $order, ?User $user, ?Terminal $terminal = null): Order
+    {
+        if ($user !== null) {
+            $this->authorize($user, Permission::TakeOrders);
+        }
+
+        if ($order->status !== OrderStatus::Pending || $order->source !== 'qr') {
+            throw new SaleException("Order {$order->number_label} is not waiting to be confirmed.");
+        }
+
+        return DB::connection($order->getConnectionName())->transaction(function () use ($order, $user, $terminal): Order {
+            $into = $order->diningTable ? $this->openOrderAt($order->diningTable) : null;
+
+            if ($into !== null) {
+                // The table already has an order: this round joins it.
+                $order->items()->update(['order_id' => $into->id]);
+
+                if ($into->customer_id === null && $order->customer_id !== null) {
+                    $into->update(['customer_id' => $order->customer_id]);
+                }
+
+                $order->update(['status' => OrderStatus::Cancelled, 'note' => "Joined {$into->number_label}."]);
+                OrderTotals::apply($order);
+                OrderTotals::apply($into);
+            } else {
+                $order->update([
+                    'status' => OrderStatus::Draft,
+                    'terminal_id' => $order->terminal_id ?? $terminal?->id,
+                    'shift_id' => $order->shift_id ?? ($terminal ? Shift::openOn($terminal)?->id : null),
+                    'opened_by' => $order->opened_by ?? $user?->id,
+                ]);
+                $into = $order;
+            }
+
+            $this->markSent($into);
+
+            if ($into->status === OrderStatus::Draft) {
+                $into->update(['status' => OrderStatus::Confirmed]);
+            }
+
+            return $into->refresh();
+        });
+    }
+
+    public function rejectQrOrder(Order $order, User $user, string $reason): void
+    {
+        $this->authorize($user, Permission::TakeOrders);
+
+        if ($order->status !== OrderStatus::Pending || $order->source !== 'qr') {
+            throw new SaleException("Order {$order->number_label} is not waiting to be confirmed.");
+        }
+
+        if (blank($reason)) {
+            throw new SaleException('Give the customer a reason.');
+        }
+
+        $order->update([
+            'status' => OrderStatus::Cancelled,
+            'reject_reason' => $reason,
+            'cancelled_by' => $user->id,
+            'cancelled_at' => now(),
+        ]);
+    }
+
+    /**
      * Attach a customer by phone number, adding them if they are new.
      */
     public function attachCustomer(Order $order, User $user, string $phone, ?string $name = null): Customer
@@ -427,6 +528,19 @@ class Till
         $this->authorize($user, Permission::TakeOrders);
         $this->ensureOpen($order);
 
+        $customer = $this->customerFor($phone, $name);
+
+        $order->update(['customer_id' => $customer->id]);
+
+        return $customer;
+    }
+
+    /**
+     * The customer with this phone number, added if new. A consent given
+     * now is recorded; it is never taken away here.
+     */
+    public function customerFor(string $phone, ?string $name = null, bool $consent = false): Customer
+    {
         $digits = Customer::normalisePhone($phone);
 
         if (strlen($digits) < 8 || strlen($digits) > 15) {
@@ -436,16 +550,15 @@ class Till
         $customer = Customer::withTrashed()->where('phone', $digits)->first();
 
         if ($customer === null) {
-            $customer = Customer::create(['phone' => $digits, 'name' => filled($name) ? $name : null]);
-        } else {
-            $customer->restore();
-
-            if (blank($customer->name) && filled($name)) {
-                $customer->update(['name' => $name]);
-            }
+            return Customer::create(['phone' => $digits, 'name' => filled($name) ? $name : null, 'marketing_consent' => $consent]);
         }
 
-        $order->update(['customer_id' => $customer->id]);
+        $customer->restore();
+        $customer->fill(array_filter([
+            'name' => blank($customer->name) && filled($name) ? $name : null,
+            'marketing_consent' => $consent ? true : null,
+        ], fn ($value) => $value !== null));
+        $customer->save();
 
         return $customer;
     }

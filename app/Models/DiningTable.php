@@ -11,12 +11,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * A table in a floor area. Its status (available, occupied, bill
  * requested) will come from its orders once there are orders.
  */
-#[Fillable(['floor_area_id', 'name', 'seats', 'shape', 'pos_x', 'pos_y', 'sort_order', 'is_active'])]
+#[Fillable(['floor_area_id', 'qr_token', 'name', 'seats', 'shape', 'pos_x', 'pos_y', 'sort_order', 'is_active'])]
 class DiningTable extends Model
 {
     /** @use HasFactory<DiningTableFactory> */
@@ -40,6 +41,26 @@ class DiningTable extends Model
     public function uniqueIds(): array
     {
         return ['ulid'];
+    }
+
+    /**
+     * The table's QR code link, made the first time it is needed.
+     */
+    public function qrUrl(string $acronym): string
+    {
+        if ($this->qr_token === null) {
+            $this->newQrCode();
+        }
+
+        return route('qr.order', ['business' => strtolower($acronym), 'token' => $this->qr_token]);
+    }
+
+    /**
+     * A new QR code: the printed one stops working.
+     */
+    public function newQrCode(): void
+    {
+        $this->forceFill(['qr_token' => Str::random(40)])->save();
     }
 
     /**

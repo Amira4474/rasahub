@@ -6,6 +6,75 @@ footer of the website and of the platform, tenant admin and POS pages.
 
 Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 
+## v0.7.0 (2026-11-04)
+
+QR ordering: customers order from their phones at the table, on a page the
+restaurant designs. The last release on the roadmap.
+
+### Added
+
+- **A QR code on every table** (Growth and Enterprise). Admin → Floor
+  plans → **Print QR codes** makes an A4 PDF of a floor area's tables, one
+  card per table with its name, the code and "Scan to order". **New QR
+  code** on a table makes its printed code stop working; **QR page** opens
+  it.
+- **The customer's menu** on their phone, with no app and no sign-up: the
+  restaurant's banner, logo, heading and welcome text; category tabs and
+  products with photos, descriptions and the branch's prices (sold-out
+  items hidden); the same modifier and set meal choices as the POS, with a
+  kitchen note; a basket with the total including SST and service charge;
+  an optional name and phone number with a marketing consent tick box; and
+  **Send order**. The page then follows each order: waiting for staff,
+  sent to the kitchen, being prepared, ready, served, or not accepted with
+  the reason. **Call staff** and **Ask for the bill** buttons.
+- **Design the QR page** on its own page (Menu → QR ordering page):
+  banner, logo, heading, welcome text, main and background colours, footer
+  (for halal certification, opening hours or Wi-Fi), and whether to show
+  photos and descriptions. A phone-sized preview beside the form follows
+  every change, including a newly chosen image, before it is saved, using
+  the restaurant's own menu; "Open the real page" opens it as customers see
+  it.
+- **QR inbox on the POS**: a badge in the header with a count and a chime
+  for QR orders waiting and tables calling. **Confirm** sends an order to
+  the kitchen (tickets and screens as usual); **Reject** asks for a reason
+  the customer sees. Calls are marked done. The table plan shows a bell on
+  a table that is calling staff or asking for the bill.
+- **One bill per table**: a confirmed round from a table that already has
+  an open order joins it.
+- **Branch settings**: take orders by QR code (on), and send QR orders to
+  the kitchen without confirming (off).
+
+### Security
+
+- QR links are long and random, one per table, and can be replaced. The
+  page answers 404 for any link that is wrong, replaced, switched off or on
+  a plan without QR ordering. Prices and choices are checked again when an
+  order is sent. Sending and calling are rate-limited per table and device.
+
+### Changed
+
+- **Plans page**: "QR ordering, with your own page design" is marked as
+  built.
+- **The POS table plan and open orders** leave out QR orders still waiting
+  for staff; they are in the QR inbox.
+
+### Database
+
+- Tenant migration `2026_11_04_100000` adds `table_requests`; a QR code on
+  dining tables; QR settings on branches; QR page design on restaurant
+  settings; and lets an order have no terminal or staff member until it is
+  confirmed, with a reject reason.
+
+### Packages
+
+- Adds `bacon/bacon-qr-code` to draw QR codes as SVG.
+
+### Upgrading
+
+1. `composer install`, then `php artisan tenants:migrate`.
+2. Design the page under Menu → QR ordering page, then print each floor area's
+   QR codes.
+
 ## v0.6.0 (2026-11-03)
 
 Reporting: twelve reports with Excel and PDF downloads, a sales dashboard

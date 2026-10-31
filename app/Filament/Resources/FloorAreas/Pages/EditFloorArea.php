@@ -19,6 +19,12 @@ class EditFloorArea extends EditRecord
                 ->label('Floor plan')
                 ->icon(Heroicon::OutlinedMap)
                 ->url(fn (): string => FloorAreaResource::getUrl('plan', ['record' => $this->record])),
+            Action::make('qrCodes')
+                ->label('Print QR codes')
+                ->icon(Heroicon::OutlinedQrCode)
+                ->color('gray')
+                ->visible(fn (): bool => FloorAreaResource::qrOrderingIncluded())
+                ->url(fn (): string => route('qr.codes', $this->record->ulid), shouldOpenInNewTab: true),
             DeleteAction::make()
                 ->modalDescription('Its tables are removed too.'),
         ];

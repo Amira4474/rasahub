@@ -47,6 +47,11 @@ class FloorAreasTable
                     ->label('Floor plan')
                     ->icon(Heroicon::OutlinedMap)
                     ->url(fn (FloorArea $record): string => FloorAreaResource::getUrl('plan', ['record' => $record])),
+                Action::make('qrCodes')
+                    ->label('QR codes')
+                    ->icon(Heroicon::OutlinedQrCode)
+                    ->visible(fn (): bool => FloorAreaResource::qrOrderingIncluded())
+                    ->url(fn (FloorArea $record): string => route('qr.codes', $record->ulid), shouldOpenInNewTab: true),
                 EditAction::make(),
             ]);
     }

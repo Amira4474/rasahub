@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Branches\Schemas;
 
+use App\Tenancy\TenantContext;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -48,6 +49,18 @@ class BranchForm
                         TextInput::make('phone')
                             ->tel()
                             ->maxLength(32),
+                    ]),
+                Section::make('QR ordering')
+                    ->description('Customers order from their phones by scanning the QR code on their table. Growth and Enterprise.')
+                    ->visible(fn (): bool => app(TenantContext::class)->business()?->subscription?->plan->includes('qr_ordering') ?? false)
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('qr_ordering_enabled')
+                            ->label('Take orders by QR code')
+                            ->default(true),
+                        Toggle::make('qr_auto_confirm')
+                            ->label('Send QR orders to the kitchen without confirming')
+                            ->helperText('Off: staff confirm each QR order at the POS first.'),
                     ]),
                 Section::make('Service charge and business day')
                     ->columns(2)

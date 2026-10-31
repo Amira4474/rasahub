@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * tenant's database. New tenants start with SST on at 6%, menu prices
  * including SST, and totals rounded to 5 sen.
  */
-#[Fillable(['sst_enabled', 'sst_rate', 'prices_include_sst', 'sst_registration_number', 'round_to_five_sen', 'refund_days', 'receipt_logo_path', 'receipt_header', 'receipt_footer'])]
+#[Fillable(['sst_enabled', 'sst_rate', 'prices_include_sst', 'sst_registration_number', 'round_to_five_sen', 'refund_days', 'receipt_logo_path', 'receipt_header', 'receipt_footer', 'qr_logo_path', 'qr_banner_path', 'qr_heading', 'qr_welcome_text', 'qr_primary_color', 'qr_background_color', 'qr_footer_text', 'qr_show_descriptions', 'qr_show_photos'])]
 class RestaurantSetting extends Model
 {
     use UsesTenantDatabase;
@@ -22,6 +22,10 @@ class RestaurantSetting extends Model
         'prices_include_sst' => true,
         'round_to_five_sen' => true,
         'refund_days' => 30,
+        'qr_primary_color' => '#DC4A2D',
+        'qr_background_color' => '#FBF3E7',
+        'qr_show_descriptions' => true,
+        'qr_show_photos' => true,
     ];
 
     /**
@@ -58,6 +62,8 @@ class RestaurantSetting extends Model
             'prices_include_sst' => 'boolean',
             'round_to_five_sen' => 'boolean',
             'refund_days' => 'integer',
+            'qr_show_descriptions' => 'boolean',
+            'qr_show_photos' => 'boolean',
         ];
     }
 }

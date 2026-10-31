@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'branch_id', 'terminal_id', 'shift_id', 'business_date', 'number', 'number_label', 'receipt_number',
     'type', 'source', 'dining_table_id', 'table_label', 'guests', 'customer_id', 'status', 'payment_status', 'note',
-    'cancel_reason', 'cancelled_by', 'cancel_approved_by', 'cancelled_at',
+    'cancel_reason', 'reject_reason', 'cancelled_by', 'cancel_approved_by', 'cancelled_at',
     'sst_enabled', 'sst_rate', 'prices_include_sst', 'service_charge_rate', 'round_to_five_sen',
     'subtotal', 'discount_total', 'service_charge', 'sst', 'rounding', 'total', 'paid', 'refunded', 'opened_by', 'completed_at',
 ])]

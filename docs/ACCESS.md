@@ -213,6 +213,22 @@ What it does and does not do:
   that the tenant can still be helped.
 - Only Platform Super Admin and Platform Admin may start it.
 
+## QR ordering pages
+
+A customer's menu at `/order/{acronym}/{code}` is public: nobody signs in.
+The code is 40 random characters, one per table, and "New QR code" on the
+table replaces it so a printed code stops working. A page only opens while
+the business is active and subscribed on Growth or Enterprise, the branch
+takes QR orders, and the table and its area are active; otherwise it is a
+404, whatever the reason. Every request finds the business and the table
+again from the link and works inside that business's database only.
+
+A QR order waits for staff (unless the branch confirms automatically), and
+its prices and choices are checked by the till as at the POS. Sending is
+limited to 5 orders per table and device in 10 minutes, calls to 3 in 5
+minutes, the page to 60 requests a minute, and an order to 30 lines of up
+to 20 each. Staff confirm or reject QR orders at the POS with `orders.take`.
+
 ## Print gateway
 
 Printing on network printers goes through a small program at each branch,

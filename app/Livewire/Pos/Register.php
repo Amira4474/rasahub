@@ -20,6 +20,7 @@ use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Shift;
 use App\Models\Station;
+use App\Models\TableRequest;
 use App\Models\Terminal;
 use App\Models\User;
 use App\Printing\PrintQueue;
@@ -35,6 +36,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -273,8 +275,10 @@ class Register extends Component
     #[Computed]
     public function openOrders(): Collection
     {
+        // QR orders waiting for staff are in the QR inbox, not here.
         return Order::open()
             ->where('branch_id', $this->branch->id)
+            ->where('status', '!=', OrderStatus::Pending)
             ->whereHas('items')
             ->with('diningTable')
             ->latest('id')
@@ -377,6 +381,27 @@ class Register extends Component
                 'total' => Money::sum($group->pluck('amount')),
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * Calls from tables for staff or the bill, not yet dealt with.
+     *
+     * @return Collection<int, TableRequest>
+     */
+    #[Computed]
+    public function tableRequests(): Collection
+    {
+        return TableRequest::where('branch_id', $this->branch->id)->whereNull('resolved_at')->get();
+    }
+
+    /**
+     * A QR order was confirmed or a call dealt with in the header: the
+     * tables and open orders are worked out again.
+     */
+    #[On('qr-confirmed')]
+    public function refreshFromInbox(): void
+    {
+        unset($this->openOrders, $this->tableRequests, $this->order);
     }
 
     /**

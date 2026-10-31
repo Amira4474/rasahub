@@ -10,6 +10,7 @@ use App\Filament\Resources\FloorAreas\RelationManagers\TablesRelationManager;
 use App\Filament\Resources\FloorAreas\Schemas\FloorAreaForm;
 use App\Filament\Resources\FloorAreas\Tables\FloorAreasTable;
 use App\Models\FloorArea;
+use App\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -33,6 +34,11 @@ class FloorAreaResource extends Resource
     protected static ?string $modelLabel = 'floor area';
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function qrOrderingIncluded(): bool
+    {
+        return app(TenantContext::class)->business()?->subscription?->plan->includes('qr_ordering') ?? false;
+    }
 
     public static function form(Schema $schema): Schema
     {

@@ -57,6 +57,9 @@
 
             <div class="flex items-center gap-2 text-sm text-cream-100">
                 <span class="hidden sm:inline">{{ auth()->user()->name }}</span>
+                @if (\App\Livewire\Pos\QrInbox::included() && $this->allowed(Permission::TakeOrders))
+                    <livewire:pos.qr-inbox :terminal="$this->terminal" />
+                @endif
                 <nav class="flex gap-1 rounded-xl bg-white/5 p-1" aria-label="POS sections">
                     {{-- Icons only; the name is the button's label and its tooltip. --}}
                     @foreach (array_filter([
@@ -169,6 +172,10 @@
                                     ])
                                     style="left: {{ $diningTable->pos_x }}%; top: {{ $diningTable->pos_y }}%; width: {{ $diningTable->shape->value === 'rectangle' ? 14 : 8.5 }}%; aspect-ratio: {{ $diningTable->shape->value === 'rectangle' ? '2 / 1' : '1 / 1' }};"
                                 >
+                                    @php($call = $this->tableRequests->firstWhere('dining_table_id', $diningTable->id))
+                                    @if ($call)
+                                        <span class="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full bg-saffron-400 text-ink-900 shadow" title="{{ $call->label() }}">@svg($call->type === 'bill' ? 'heroicon-s-receipt-percent' : 'heroicon-s-bell-alert', 'size-4')</span>
+                                    @endif
                                     <span class="text-sm font-bold">{{ $diningTable->name }}</span>
                                     <span class="text-[0.65rem] opacity-80">{{ $open ? $open->number_label : $diningTable->seats.' seats' }}</span>
                                 </button>
@@ -177,7 +184,7 @@
                     @empty
                         <p class="text-cream-200/70">This branch has no tables set up. They are added under Floor plans in the admin. Dine-in orders can still be taken from the Menu tab.</p>
                     @endforelse
-                    <p class="text-xs text-cream-200/60">Green: free. Red: occupied. Amber: partly paid.</p>
+                    <p class="text-xs text-cream-200/60">Green: free. Red: occupied. Amber: partly paid. A bell: the table is calling staff or asking for the bill.</p>
                 @elseif ($tab === 'orders')
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         @forelse ($this->openOrders as $open)

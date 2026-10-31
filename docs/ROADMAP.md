@@ -33,7 +33,7 @@ and the version in [`VERSION.md`](../VERSION.md).
 | v0.4.0 | Discounts, voids, cancellations, refunds (done) |
 | v0.5.0 | Kitchen: stations, kitchen display, kitchen and bar printers, print gateway (done) |
 | v0.6.0 | Reporting (done) |
-| v0.7.0 | QR ordering |
+| v0.7.0 | QR ordering (done) |
 
 **Kept in view** (not scheduled): inventory, offline mode, MyInvois
 e-invoicing, loyalty points, online payment for QR orders.
@@ -228,7 +228,19 @@ Decided on 2026-11-03:
 Reports filter by date range and branch, show staff only their own branches,
 and export to CSV.
 
-## v0.7.0 QR ordering
+## v0.7.0 QR ordering (done)
+
+Decided on 2026-11-04:
+
+- **QR codes** are drawn with the bacon/bacon-qr-code library, as SVG.
+- **Customers** may give a name and phone number, with a marketing consent
+  tick box; never required.
+- **Rounds:** each confirmed round from a table joins the table's open order,
+  so a table has one bill.
+- **Tables only** for now; a takeaway QR code at the counter later.
+- **English** only for now; Bahasa Melayu later.
+- **The page's look** is designed by the restaurant in the admin: logo,
+  banner header, heading, welcome text, colours and a footer note.
 
 Each table has a printable QR code holding a secure link to that table.
 Customers browse the menu on their phone, choose modifiers and set meal

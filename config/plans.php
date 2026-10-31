@@ -105,9 +105,9 @@ return [
             'live' => true,
         ],
         'qr_ordering' => [
-            'label' => 'QR ordering',
+            'label' => 'QR ordering, with your own page design',
             'plans' => ['growth', 'enterprise'],
-            'live' => false,
+            'live' => true,
         ],
         'branch_pricing' => [
             'label' => 'Per-branch prices',

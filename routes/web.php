@@ -5,6 +5,7 @@ use App\Http\Controllers\Pos\PosHomeController;
 use App\Http\Controllers\Pos\PosLoginController;
 use App\Http\Controllers\Pos\PosReceiptController;
 use App\Http\Controllers\Pos\PosTerminalController;
+use App\Http\Controllers\QrOrderController;
 use App\Http\Controllers\Registration\TenantRegistrationController;
 use App\Http\Controllers\ReportExportController;
 use App\Http\Middleware\EnsurePosAccess;
@@ -12,6 +13,16 @@ use App\Http\Middleware\EnsurePosTerminal;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'marketing.home')->name('home');
+
+// A customer's menu, from the QR code on their table. Public: the random
+// code in the link names one table, at one business.
+Route::get('/order/{business}/{token}', QrOrderController::class)
+    ->where(['business' => '[A-Za-z0-9]+', 'token' => '[A-Za-z0-9]{20,64}'])
+    ->middleware('throttle:60,1')
+    ->name('qr.order');
+
+// Printable QR codes for a floor area's tables, for the tenant admin.
+Route::get('/admin/floor-areas/{area}/qr-codes.pdf', [QrOrderController::class, 'codes'])->name('qr.codes');
 
 // Business settings became Restaurant settings in v0.2.0.
 Route::redirect('/admin/business-settings', '/admin/restaurant-settings', 301);

@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 #[Hidden(['gateway_key'])]
-#[Fillable(['name', 'code', 'timezone', 'address', 'phone', 'service_charge_rate', 'service_charge_dine_in_only', 'business_day_starts_at', 'kitchen_amber_minutes', 'kitchen_red_minutes', 'is_active'])]
+#[Fillable(['name', 'code', 'timezone', 'address', 'phone', 'service_charge_rate', 'service_charge_dine_in_only', 'business_day_starts_at', 'kitchen_amber_minutes', 'kitchen_red_minutes', 'qr_ordering_enabled', 'qr_auto_confirm', 'is_active'])]
 /**
  * A branch is tenant data: it lives in its business's own database, so it
  * carries no business_id.
@@ -42,6 +42,8 @@ class Branch extends Model
         'business_day_starts_at' => '04:00:00',
         'kitchen_amber_minutes' => 10,
         'kitchen_red_minutes' => 15,
+        'qr_ordering_enabled' => true,
+        'qr_auto_confirm' => false,
     ];
 
     /**
@@ -170,6 +172,8 @@ class Branch extends Model
             'kitchen_amber_minutes' => 'integer',
             'kitchen_red_minutes' => 'integer',
             'gateway_seen_at' => 'datetime',
+            'qr_ordering_enabled' => 'boolean',
+            'qr_auto_confirm' => 'boolean',
         ];
     }
 }

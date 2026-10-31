@@ -3,6 +3,10 @@
 namespace App\Filament\Resources\FloorAreas\RelationManagers;
 
 use App\Enums\TableShape;
+use App\Filament\Resources\FloorAreas\FloorAreaResource;
+use App\Models\DiningTable;
+use App\Tenancy\TenantContext;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -11,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -76,6 +81,21 @@ class TablesRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                Action::make('qrPage')
+                    ->label('QR page')
+                    ->icon(Heroicon::OutlinedQrCode)
+                    ->color('gray')
+                    ->visible(fn (): bool => FloorAreaResource::qrOrderingIncluded())
+                    ->url(fn (DiningTable $record): string => $record->qrUrl(app(TenantContext::class)->business()->acronym), shouldOpenInNewTab: true),
+                Action::make('newQrCode')
+                    ->label('New QR code')
+                    ->icon(Heroicon::OutlinedArrowPath)
+                    ->color('gray')
+                    ->visible(fn (): bool => FloorAreaResource::qrOrderingIncluded() && auth()->user()->can('update', $this->getOwnerRecord()))
+                    ->requiresConfirmation()
+                    ->modalDescription('The printed QR code for this table stops working. Print the new one from Floor plans.')
+                    ->action(fn (DiningTable $record) => $record->newQrCode())
+                    ->successNotificationTitle('New QR code made'),
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
