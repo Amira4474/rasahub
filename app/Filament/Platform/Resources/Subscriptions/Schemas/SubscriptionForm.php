@@ -7,13 +7,20 @@ use App\Models\Subscription;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class SubscriptionForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components(self::fields())->columns(3);
+        return $schema
+            ->columns(1)
+            ->components([
+                Section::make('Subscription')
+                    ->columns(3)
+                    ->schema(self::fields()),
+            ]);
     }
 
     /**

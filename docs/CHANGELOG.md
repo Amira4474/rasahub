@@ -16,6 +16,10 @@ Versions are written `vMAJOR.MINOR.PATCH`, for example `v0.0.1`.
 - **The wrong sign-in page says so.** A correct password on the wrong page
   now shows which page to use, with a button to it, instead of "credentials
   do not match". A wrong password still reveals nothing.
+- **Every form sits in a card.** Categories, customers, floor areas, payment
+  methods, POS terminals, staff, platform users, invitations and
+  subscriptions now lay out their fields in a card, as products and branches
+  already did. The floor plan's layout is in a card too.
 
 ## v0.7.0 (2026-11-04)
 
